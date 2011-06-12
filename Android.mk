@@ -36,6 +36,9 @@ DRM_USES_RADEON := $(findstring true, \
 	$(BOARD_USES_R300G) \
 	$(BOARD_USES_R600G))
 
+DRM_USES_NOUVEAU := $(findstring true, \
+	$(BOARD_USES_NOUVEAU))
+
 LOCAL_SRC_FILES := \
 	gralloc.c \
 	gralloc_drm.c \
@@ -67,6 +70,13 @@ LOCAL_C_INCLUDES += external/drm/radeon
 LOCAL_CFLAGS += -DENABLE_RADEON
 LOCAL_SHARED_LIBRARIES += libdrm_radeon
 endif # DRM_USES_RADEON
+
+ifeq ($(strip $(DRM_USES_NOUVEAU)),true)
+LOCAL_SRC_FILES += gralloc_drm_nouveau.c
+LOCAL_C_INCLUDES += external/drm/nouveau
+LOCAL_CFLAGS += -DENABLE_NOUVEAU
+LOCAL_SHARED_LIBRARIES += libdrm_nouveau
+endif # DRM_USES_NOUVEAU
 
 LOCAL_MODULE := gralloc.$(TARGET_PRODUCT)
 LOCAL_MODULE_TAGS := optional
