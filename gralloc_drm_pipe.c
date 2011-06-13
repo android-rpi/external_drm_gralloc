@@ -132,6 +132,7 @@ static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 	templ.width0 = handle->width;
 	templ.height0 = handle->height;
 	templ.depth0 = 1;
+	templ.array_size = 1;
 
 	if (handle->name) {
 		buf->winsys.type = DRM_API_HANDLE_TYPE_SHARED;
@@ -280,6 +281,58 @@ static void pipe_unmap(struct gralloc_drm_drv_t *drv,
 	pthread_mutex_unlock(&pm->mutex);
 }
 
+static void pipe_copy(struct gralloc_drm_drv_t *drv,
+		struct gralloc_drm_bo_t *dst_bo,
+		struct gralloc_drm_bo_t *src_bo,
+		short x1, short y1, short x2, short y2)
+{
+	struct pipe_manager *pm = (struct pipe_manager *) drv;
+	struct pipe_buffer *dst = (struct pipe_buffer *) dst_bo;
+	struct pipe_buffer *src = (struct pipe_buffer *) src_bo;
+	struct pipe_box src_box;
+
+	if (dst_bo->handle->width != src_bo->handle->width ||
+	    dst_bo->handle->height != src_bo->handle->height ||
+	    dst_bo->handle->stride != src_bo->handle->stride ||
+	    dst_bo->handle->format != src_bo->handle->format) {
+		LOGE("copy between incompatible buffers");
+		return;
+	}
+
+	if (x1 < 0)
+		x1 = 0;
+	if (y1 < 0)
+		y1 = 0;
+	if (x2 > dst_bo->handle->width)
+		x2 = dst_bo->handle->width;
+	if (y2 > dst_bo->handle->height)
+		y2 = dst_bo->handle->height;
+
+	if (x2 <= x1 || y2 <= y1)
+		return;
+
+	u_box_2d(x1, y1, x2 - x1, y2 - y1, &src_box);
+
+	pthread_mutex_lock(&pm->mutex);
+
+	/* need a context for copying */
+	if (!pm->context) {
+		pm->context = pm->screen->context_create(pm->screen, NULL);
+		if (!pm->context) {
+			LOGE("failed to create pipe context");
+			pthread_mutex_unlock(&pm->mutex);
+			return;
+		}
+	}
+
+	pm->context->resource_copy_region(pm->context,
+			dst->resource, 0, x1, y1, 0,
+			src->resource, 0, &src_box);
+	pm->context->flush(pm->context, NULL);
+
+	pthread_mutex_unlock(&pm->mutex);
+}
+
 static void pipe_init_kms_features(struct gralloc_drm_drv_t *drv, struct gralloc_drm_t *drm)
 {
 	struct pipe_manager *pm = (struct pipe_manager *) drv;
@@ -356,6 +409,7 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_pipe(int fd, const char *na
 	pm->base.free = pipe_free;
 	pm->base.map = pipe_map;
 	pm->base.unmap = pipe_unmap;
+	pm->base.copy = pipe_copy;
 
 	return &pm->base;
 }
