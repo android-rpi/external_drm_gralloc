@@ -68,6 +68,10 @@ init_drv_from_fd(int fd)
 	}
 
 	if (version->name) {
+#ifdef ENABLE_PIPE
+		drv = gralloc_drm_drv_create_for_pipe(fd, version->name);
+#endif
+
 #ifdef ENABLE_INTEL
 		if (!drv && !strcmp(version->name, "i915"))
 			drv = gralloc_drm_drv_create_for_intel(fd);
@@ -79,10 +83,6 @@ init_drv_from_fd(int fd)
 #ifdef ENABLE_NOUVEAU
 		if (!drv && !strcmp(version->name, "nouveau"))
 			drv = gralloc_drm_drv_create_for_nouveau(fd);
-#endif
-#ifdef ENABLE_VMWGFX
-		if (!drv && !strcmp(version->name, "vmwgfx"))
-			drv = gralloc_drm_drv_create_for_vmwgfx(fd);
 #endif
 	}
 

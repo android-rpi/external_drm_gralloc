@@ -78,6 +78,19 @@ LOCAL_CFLAGS += -DENABLE_NOUVEAU
 LOCAL_SHARED_LIBRARIES += libdrm_nouveau
 endif # DRM_USES_NOUVEAU
 
+ifeq ($(strip $(DRM_USES_PIPE)),true)
+LOCAL_SRC_FILES += gralloc_drm_pipe.c
+LOCAL_CFLAGS += -DENABLE_PIPE
+LOCAL_C_INCLUDES += \
+	external/mesa/src/gallium/include \
+	external/mesa/src/gallium/winsys \
+	external/mesa/src/gallium/auxiliary
+LOCAL_STATIC_LIBRARIES += \
+	libmesa_winsys_nouveau \
+	libmesa_pipe_nouveau \
+	libmesa_gallium
+endif # DRM_USES_PIPE
+
 LOCAL_MODULE := gralloc.$(TARGET_PRODUCT)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
