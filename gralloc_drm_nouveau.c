@@ -269,6 +269,7 @@ static void nouveau_init_kms_features(struct gralloc_drm_drv_t *drv,
 {
 	struct nouveau_info *info = (struct nouveau_info *) drv;
 
+	drm->fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
 	drm->mode_dirty_fb = 0;
 	drm->swap_mode = (info->chan) ? DRM_SWAP_FLIP : DRM_SWAP_SETCRTC;
 	drm->mode_sync_flip = 1;

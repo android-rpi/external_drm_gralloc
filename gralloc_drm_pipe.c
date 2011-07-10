@@ -337,6 +337,7 @@ static void pipe_init_kms_features(struct gralloc_drm_drv_t *drv, struct gralloc
 {
 	struct pipe_manager *pm = (struct pipe_manager *) drv;
 
+	drm->fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
 	drm->mode_dirty_fb = (strcmp(pm->name, "vmwgfx") == 0);
 	drm->swap_mode = DRM_SWAP_FLIP;
 	drm->mode_sync_flip = 1;

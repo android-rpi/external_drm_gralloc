@@ -48,18 +48,19 @@ struct gralloc_drm_t {
 	uint32_t connector_id;
 	drmModeModeInfo mode;
 	int xdpi, ydpi;
-	int format;
 #ifdef DRM_MODE_FEATURE_DIRTYFB
 	drmModeClip clip;
 #endif
-	drmEventContext evctx;
 
 	/* initialized by drv->init_kms_features */
+	int fb_format;
 	enum drm_swap_mode swap_mode;
 	int swap_interval;
 	int mode_dirty_fb;
 	int mode_sync_flip; /* page flip should block */
 	int vblank_secondary;
+
+	drmEventContext evctx;
 
 	int first_post;
 	struct gralloc_drm_bo_t *current_front, *next_front;

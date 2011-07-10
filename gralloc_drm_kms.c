@@ -324,7 +324,7 @@ static void drm_kms_init_features(struct gralloc_drm_t *drm)
 		front = gralloc_drm_bo_create(drm,
 					      drm->mode.hdisplay,
 					      drm->mode.vdisplay,
-					      drm->format,
+					      drm->fb_format,
 					      GRALLOC_USAGE_HW_FB);
 		if (front && gralloc_drm_bo_add_fb(front)) {
 			gralloc_drm_bo_destroy(front);
@@ -408,13 +408,6 @@ static int drm_kms_init_with_connector(struct gralloc_drm_t *drm,
 		drm->ydpi = 75;
 	}
 
-	/* select between 32/16 bits */
-#if 1
-	drm->format = HAL_PIXEL_FORMAT_BGRA_8888;
-#else
-	drm->format = HAL_PIXEL_FORMAT_RGB_565;
-#endif
-
 #ifdef DRM_MODE_FEATURE_DIRTYFB
 	drm->clip.x1 = 0;
 	drm->clip.y1 = 0;
@@ -483,7 +476,7 @@ void gralloc_drm_get_kms_info(struct gralloc_drm_t *drm,
 	*((int *)      &fb->stride) = drm->mode.hdisplay;
 	*((float *)    &fb->fps) = drm->mode.vrefresh;
 
-	*((int *)      &fb->format) = drm->format;
+	*((int *)      &fb->format) = drm->fb_format;
 	*((float *)    &fb->xdpi) = drm->xdpi;
 	*((float *)    &fb->ydpi) = drm->ydpi;
 	*((int *)      &fb->minSwapInterval) = drm->swap_interval;

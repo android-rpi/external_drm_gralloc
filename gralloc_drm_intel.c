@@ -496,6 +496,8 @@ static void intel_init_kms_features(struct gralloc_drm_drv_t *drv,
 	struct drm_i915_getparam gp;
 	int pageflipping, id;
 
+	drm->fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
+
 	drm->mode_dirty_fb = 0;
 	/* why? */
 	drm->mode_sync_flip = 1;
