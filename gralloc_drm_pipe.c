@@ -39,7 +39,7 @@ struct pipe_manager {
 	struct gralloc_drm_drv_t base;
 
 	int fd;
-	char name[16];
+	char driver[16];
 	pthread_mutex_t mutex;
 	struct pipe_screen *screen;
 	struct pipe_context *context;
@@ -338,7 +338,7 @@ static void pipe_init_kms_features(struct gralloc_drm_drv_t *drv, struct gralloc
 	struct pipe_manager *pm = (struct pipe_manager *) drv;
 
 	drm->fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
-	drm->mode_dirty_fb = (strcmp(pm->name, "vmwgfx") == 0);
+	drm->mode_dirty_fb = (strcmp(pm->driver, "vmwgfx") == 0);
 	drm->swap_mode = DRM_SWAP_FLIP;
 	drm->mode_sync_flip = 1;
 	drm->swap_interval = 1;
@@ -357,29 +357,153 @@ static void pipe_destroy(struct gralloc_drm_drv_t *drv)
 
 /* for nouveau */
 #include "nouveau/drm/nouveau_drm_public.h"
+/* for r300 */
+#include "radeon/drm/radeon_drm_public.h"
+#include "r300/r300_public.h"
+/* for r600 */
+#include "r600/drm/r600_drm_public.h"
+#include "r600/r600_public.h"
+/* for vmwgfx */
+#include "svga/drm/svga_drm_public.h"
+#include "svga/svga_public.h"
 /* for debug */
 #include "target-helpers/inline_debug_helper.h"
 
 static int pipe_init_screen(struct pipe_manager *pm)
 {
-	struct pipe_screen *screen;
-	int err = 0;
+	struct pipe_screen *screen = NULL;
 
-	if (strcmp(pm->name, "nouveau") == 0) {
+#ifdef ENABLE_PIPE_NOUVEAU
+	if (strcmp(pm->driver, "nouveau") == 0)
 		screen = nouveau_drm_screen_create(pm->fd);
-		if (!screen)
-			err = -EINVAL;
+#endif
+#ifdef ENABLE_PIPE_R300
+	if (strcmp(pm->driver, "r300") == 0) {
+		struct radeon_winsys *sws = radeon_drm_winsys_create(pm->fd);
+
+		if (sws) {
+			screen = r300_screen_create(sws);
+			if (!screen)
+				sws->destroy(sws);
+		}
+	}
+#endif
+#ifdef ENABLE_PIPE_R600
+	if (strcmp(pm->driver, "r600") == 0) {
+		struct radeon *rw = r600_drm_winsys_create(pm->fd);
+
+		if (rw) {
+			screen = r600_screen_create(rw);
+			if (!screen)
+				FREE(rw);
+		}
+	}
+#endif
+#ifdef ENABLE_PIPE_VMWGFX
+	if (strcmp(pm->driver, "vmwgfx") == 0) {
+		struct svga_winsys_screen *sws =
+			svga_drm_winsys_screen_create(pm->fd);
+
+		if (sws) {
+			screen = svga_screen_create(sws);
+			if (!screen)
+				sws->destroy(sws);
+		}
+	}
+#endif
+
+	if (!screen) {
+		LOGW("failed to create screen for %s", pm->driver);
+		return -EINVAL;
+	}
+
+	pm->screen = debug_screen_wrap(screen);
+
+	return 0;
+}
+
+#include <xf86drm.h>
+#include <i915_drm.h>
+#include <radeon_drm.h>
+static int pipe_get_pci_id(struct pipe_manager *pm,
+		const char *name, int *vendor, int *device)
+{
+	int err = -EINVAL;
+
+	if (strcmp(name, "i915") == 0) {
+		struct drm_i915_getparam gp;
+
+		*vendor = 0x8086;
+
+		memset(&gp, 0, sizeof(gp));
+		gp.param = I915_PARAM_CHIPSET_ID;
+		gp.value = device;
+		err = drmCommandWriteRead(pm->fd, DRM_I915_GETPARAM, &gp, sizeof(gp));
+	}
+	else if (strcmp(name, "radeon") == 0) {
+		struct drm_radeon_info info;
+
+		*vendor = 0x1002;
+
+		memset(&info, 0, sizeof(info));
+		info.request = RADEON_INFO_DEVICE_ID;
+		info.value = (long) device;
+		err = drmCommandWriteRead(pm->fd, DRM_RADEON_INFO, &info, sizeof(info));
+	}
+	else if (strcmp(name, "nouveau") == 0) {
+		*vendor = 0x10de;
+		*device = 0;
+		err = 0;
 	}
 	else {
-		LOGW("unknown driver %s", pm->name);
-		screen = NULL;
 		err = -EINVAL;
 	}
 
-	if (screen)
-		screen = debug_screen_wrap(screen);
+	return err;
+}
 
-	pm->screen = screen;
+#define DRIVER_MAP_GALLIUM_ONLY
+#include "pci_ids/pci_id_driver_map.h"
+static int pipe_find_driver(struct pipe_manager *pm, const char *name)
+{
+	int vendor, device;
+	int err;
+	const char *driver;
+
+	err = pipe_get_pci_id(pm, name, &vendor, &device);
+	if (!err) {
+		int idx;
+
+		/* look up in the driver map */
+		for (idx = 0; driver_map[idx].driver; idx++) {
+			int i;
+
+			if (vendor != driver_map[idx].vendor_id)
+				continue;
+
+			if (driver_map[idx].num_chips_ids == -1)
+				break;
+
+			for (i = 0; i < driver_map[idx].num_chips_ids; i++) {
+				if (driver_map[idx].chip_ids[i] == device)
+					break;
+			}
+			if (i < driver_map[idx].num_chips_ids)
+				break;
+		}
+
+		driver = driver_map[idx].driver;
+		err = (driver) ? 0 : -ENODEV;
+	}
+	else {
+		if (strcmp(name, "vmwgfx") == 0) {
+			driver = "vmwgfx";
+			err = 0;
+		}
+	}
+
+	if (!err)
+		strncpy(pm->driver, driver, sizeof(pm->driver) - 1);
 
 	return err;
 }
@@ -395,9 +519,12 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_pipe(int fd, const char *na
 	}
 
 	pm->fd = fd;
-	strncpy(pm->name, name, sizeof(pm->name) - 1);
-
 	pthread_mutex_init(&pm->mutex, NULL);
+
+	if (pipe_find_driver(pm, name)) {
+		FREE(pm);
+		return NULL;
+	}
 
 	if (pipe_init_screen(pm)) {
 		FREE(pm);

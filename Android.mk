@@ -39,6 +39,8 @@ DRM_USES_RADEON := $(findstring true, \
 DRM_USES_NOUVEAU := $(findstring true, \
 	$(BOARD_USES_NOUVEAU))
 
+DRM_USES_PIPE := false
+
 LOCAL_SRC_FILES := \
 	gralloc.c \
 	gralloc_drm.c \
@@ -84,11 +86,19 @@ LOCAL_CFLAGS += -DENABLE_PIPE
 LOCAL_C_INCLUDES += \
 	external/mesa/src/gallium/include \
 	external/mesa/src/gallium/winsys \
+	external/mesa/src/gallium/drivers \
 	external/mesa/src/gallium/auxiliary
+
+ifeq ($(strip $(BOARD_USES_R600G)),true)
+LOCAL_CFLAGS += -DENABLE_PIPE_R600
 LOCAL_STATIC_LIBRARIES += \
-	libmesa_winsys_nouveau \
-	libmesa_pipe_nouveau \
+	libmesa_pipe_r600 \
+	libmesa_winsys_r600
+endif
+
+LOCAL_STATIC_LIBRARIES += \
 	libmesa_gallium
+LOCAL_SHARED_LIBRARIES += libdl
 endif # DRM_USES_PIPE
 
 LOCAL_MODULE := gralloc.$(TARGET_PRODUCT)
