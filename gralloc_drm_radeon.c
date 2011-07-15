@@ -171,10 +171,18 @@ static int radeon_get_base_align(struct radeon_info *info,
         return base_align;
 }
 
-static uint32_t drm_gem_get_tiling(const struct gralloc_drm_handle_t *handle)
+static uint32_t radeon_get_tiling(struct radeon_info *info,
+		const struct gralloc_drm_handle_t *handle)
 {
-	/* tiling must be disabled for CPU access */
-	return 0;
+	int sw = (GRALLOC_USAGE_SW_WRITE_MASK | GRALLOC_USAGE_SW_READ_MASK);
+
+	if ((handle->usage & sw) && !info->allow_color_tiling)
+		return 0;
+
+	if (info->chip_family >= CHIP_FAMILY_R600)
+		return RADEON_TILING_MICRO;
+	else
+		return RADEON_TILING_MACRO;
 }
 
 static struct gralloc_drm_bo_t *
@@ -182,11 +190,8 @@ drm_gem_radeon_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t 
 {
 	struct radeon_info *info = (struct radeon_info *) drv;
 	struct radeon_buffer *rbuf;
-	uint32_t tiling, domain;
 	int cpp;
 
-	tiling = drm_gem_get_tiling(handle);
-	domain = RADEON_GEM_DOMAIN_VRAM;
 	cpp = gralloc_drm_get_bpp(handle->format);
 	if (!cpp) {
 		LOGE("unrecognized format 0x%x", handle->format);
@@ -199,8 +204,8 @@ drm_gem_radeon_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t 
 
 
 	if (handle->name) {
-		rbuf->rbo = radeon_bo_open(info->bufmgr, handle->name,
-				0, 0, domain, 0);
+		rbuf->rbo = radeon_bo_open(info->bufmgr,
+				handle->name, 0, 0, 0, 0);
 		if (!rbuf->rbo) {
 			LOGE("failed to create rbo from name %u",
 					handle->name);
@@ -211,6 +216,10 @@ drm_gem_radeon_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t 
 	else {
 		int aligned_width, aligned_height;
 		int pitch, size, base_align;
+		uint32_t tiling, domain;
+
+		tiling = radeon_get_tiling(info, handle);
+		domain = RADEON_GEM_DOMAIN_VRAM;
 
 		if (handle->usage & (GRALLOC_USAGE_HW_FB |
 					GRALLOC_USAGE_HW_TEXTURE)) {
@@ -447,8 +456,8 @@ static int radeon_probe(struct radeon_info *info)
 	if (err)
 		return err;
 
-	info->allow_color_tiling =
-		(info->chip_family != CHIP_FAMILY_CEDAR);
+	/* CPU cannot handle tiled buffers (need scratch buffers) */
+	info->allow_color_tiling = 0;
 
 	memset(&mminfo, 0, sizeof(mminfo));
 	err = drmCommandWriteRead(info->fd, DRM_RADEON_GEM_INFO, &mminfo, sizeof(mminfo));
