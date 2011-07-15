@@ -246,7 +246,10 @@ struct gralloc_drm_bo_t *gralloc_drm_bo_validate(struct gralloc_drm_t *drm,
 		struct gralloc_drm_bo_t *bo;
 
 		/* create the struct gralloc_drm_bo_t locally */
-		bo = drm->drv->alloc(drm->drv, handle);
+		if (handle->name)
+			bo = drm->drv->alloc(drm->drv, handle);
+		else /* an invalid handle */
+			bo = NULL;
 		if (bo) {
 			bo->drm = drm;
 			bo->imported = 1;
