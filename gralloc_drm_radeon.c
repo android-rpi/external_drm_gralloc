@@ -245,6 +245,16 @@ static struct radeon_bo *radeon_alloc(struct radeon_info *info,
 	return rbo;
 }
 
+static void radeon_zero(struct radeon_info *info,
+		struct radeon_bo *rbo)
+{
+	/* should use HW clear... */
+	if (!radeon_bo_map(rbo, 1)) {
+		memset(rbo->ptr, 0, rbo->size);
+		radeon_bo_unmap(rbo);
+	}
+}
+
 static struct gralloc_drm_bo_t *
 drm_gem_radeon_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t *handle)
 {
@@ -271,6 +281,9 @@ drm_gem_radeon_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t 
 			free(rbuf);
 			return NULL;
 		}
+
+		/* Android expects the buffer to be zeroed */
+		radeon_zero(info, rbuf->rbo);
 	}
 
 	if (handle->usage & GRALLOC_USAGE_HW_FB)
