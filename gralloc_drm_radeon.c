@@ -185,11 +185,13 @@ static uint32_t radeon_get_tiling(struct radeon_info *info,
 		return RADEON_TILING_MACRO;
 }
 
-static struct gralloc_drm_bo_t *
-drm_gem_radeon_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t *handle)
+static struct radeon_bo *radeon_alloc(struct radeon_info *info,
+		struct gralloc_drm_handle_t *handle)
 {
-	struct radeon_info *info = (struct radeon_info *) drv;
-	struct radeon_buffer *rbuf;
+	struct radeon_bo *rbo;
+	int aligned_width, aligned_height;
+	int pitch, size, base_align;
+	uint32_t tiling, domain;
 	int cpp;
 
 	cpp = gralloc_drm_get_bpp(handle->format);
@@ -198,10 +200,60 @@ drm_gem_radeon_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t 
 		return NULL;
 	}
 
+	tiling = radeon_get_tiling(info, handle);
+	domain = RADEON_GEM_DOMAIN_VRAM;
+
+	if (handle->usage & (GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_HW_TEXTURE)) {
+		aligned_width = ALIGN(handle->width,
+				radeon_get_pitch_align(info, cpp, tiling));
+		aligned_height = ALIGN(handle->height,
+				radeon_get_height_align(info, tiling));
+	}
+	else {
+		aligned_width = handle->width;
+		aligned_height = handle->height;
+	}
+
+	if (!(handle->usage & (GRALLOC_USAGE_HW_FB |
+			       GRALLOC_USAGE_HW_RENDER)) &&
+	    (handle->usage & GRALLOC_USAGE_SW_READ_OFTEN))
+		domain = RADEON_GEM_DOMAIN_GTT;
+
+	pitch = aligned_width * cpp;
+	size = ALIGN(aligned_height * pitch, RADEON_GPU_PAGE_SIZE);
+	base_align = radeon_get_base_align(info, cpp, tiling);
+
+	rbo = radeon_bo_open(info->bufmgr, 0, size, base_align, domain, 0);
+	if (!rbo) {
+		LOGE("failed to allocate rbo %dx%dx%d",
+				handle->width, handle->height, cpp);
+		return NULL;
+	}
+
+	if (tiling)
+		radeon_bo_set_tiling(rbo, tiling, pitch);
+
+	if (radeon_gem_get_kernel_name(rbo,
+				(uint32_t *) &handle->name)) {
+		LOGE("failed to flink rbo");
+		radeon_bo_unref(rbo);
+		return NULL;
+	}
+
+	handle->stride = pitch;
+
+	return rbo;
+}
+
+static struct gralloc_drm_bo_t *
+drm_gem_radeon_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t *handle)
+{
+	struct radeon_info *info = (struct radeon_info *) drv;
+	struct radeon_buffer *rbuf;
+
 	rbuf = calloc(1, sizeof(*rbuf));
 	if (!rbuf)
 		return NULL;
-
 
 	if (handle->name) {
 		rbuf->rbo = radeon_bo_open(info->bufmgr,
@@ -214,55 +266,11 @@ drm_gem_radeon_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t 
 		}
 	}
 	else {
-		int aligned_width, aligned_height;
-		int pitch, size, base_align;
-		uint32_t tiling, domain;
-
-		tiling = radeon_get_tiling(info, handle);
-		domain = RADEON_GEM_DOMAIN_VRAM;
-
-		if (handle->usage & (GRALLOC_USAGE_HW_FB |
-					GRALLOC_USAGE_HW_TEXTURE)) {
-			aligned_width = ALIGN(handle->width,
-					radeon_get_pitch_align(info, cpp, tiling));
-			aligned_height = ALIGN(handle->height,
-					radeon_get_height_align(info, tiling));
-		}
-		else {
-			aligned_width = handle->width;
-			aligned_height = handle->height;
-		}
-
-		if (!(handle->usage & (GRALLOC_USAGE_HW_FB |
-						GRALLOC_USAGE_HW_RENDER)) &&
-		    (handle->usage & GRALLOC_USAGE_SW_READ_OFTEN))
-			domain = RADEON_GEM_DOMAIN_GTT;
-
-		pitch = aligned_width * cpp;
-		size = ALIGN(aligned_height * pitch, RADEON_GPU_PAGE_SIZE);
-		base_align = radeon_get_base_align(info, cpp, tiling);
-
-		rbuf->rbo = radeon_bo_open(info->bufmgr, 0,
-				size, base_align, domain, 0);
+		rbuf->rbo = radeon_alloc(info, handle);
 		if (!rbuf->rbo) {
-			LOGE("failed to allocate rbo %dx%dx%d",
-					handle->width, handle->height, cpp);
 			free(rbuf);
 			return NULL;
 		}
-
-		if (tiling)
-			radeon_bo_set_tiling(rbuf->rbo, tiling, pitch);
-
-		if (radeon_gem_get_kernel_name(rbuf->rbo,
-					(uint32_t *) &handle->name)) {
-			LOGE("failed to flink rbo");
-			radeon_bo_unref(rbuf->rbo);
-			free(rbuf);
-			return NULL;
-		}
-
-		handle->stride = pitch;
 	}
 
 	if (handle->usage & GRALLOC_USAGE_HW_FB)
