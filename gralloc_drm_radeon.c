@@ -441,28 +441,38 @@ static int radeon_probe(struct radeon_info *info)
 	kinfo.request = RADEON_INFO_DEVICE_ID;
 	kinfo.value = (long) &info->chipset;
 	err = drmCommandWriteRead(info->fd, DRM_RADEON_INFO, &kinfo, sizeof(kinfo));
-	if (err)
+	if (err) {
+		LOGE("failed to get device id");
 		return err;
+	}
 
 	/* XXX this is wrong and a table should be used */
-	if (info->chipset >= 0x68e4 && info->chipset <= 0x68fe)
+	if (info->chipset >= 0x68e4 && info->chipset <= 0x68fe) {
 		info->chip_family = CHIP_FAMILY_CEDAR;
-	else if (info->chipset >= 0x9802 && info->chipset <= 0x9807)
+	}
+	else if (info->chipset >= 0x9802 && info->chipset <= 0x9807) {
 		info->chip_family = CHIP_FAMILY_PALM;
-	else
+	}
+	else {
+		LOGE("unknown device id 0x%04x", info->chipset);
 		return -EINVAL;
+	}
 
 	err = radeon_init_tile_config(info);
-	if (err)
+	if (err) {
+		LOGE("failed to get tiling config");
 		return err;
+	}
 
 	/* CPU cannot handle tiled buffers (need scratch buffers) */
 	info->allow_color_tiling = 0;
 
 	memset(&mminfo, 0, sizeof(mminfo));
 	err = drmCommandWriteRead(info->fd, DRM_RADEON_GEM_INFO, &mminfo, sizeof(mminfo));
-	if (err)
+	if (err) {
+		LOGE("failed to get gem info");
 		return err;
+	}
 
 	info->vram_size = mminfo.vram_visible;
 	info->gart_size = mminfo.gart_size;
