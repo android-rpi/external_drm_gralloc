@@ -21,25 +21,63 @@
 
 # Android.mk for drm_gralloc
 
-ifeq ($(strip $(BOARD_USES_DRM)),true)
+DRM_GPU_DRIVERS := $(BOARD_GPU_DRIVERS)
+
+# convert board uses to DRM_GPU_DRIVERS
+ifeq ($(strip $(DRM_GPU_DRIVERS)),)
+ifeq ($(strip $(BOARD_USES_I915C)),true)
+DRM_GPU_DRIVERS += i915c
+endif
+ifeq ($(strip $(BOARD_USES_I965C)),true)
+DRM_GPU_DRIVERS += i965c
+endif
+ifeq ($(strip $(BOARD_USES_I915G)),true)
+DRM_GPU_DRIVERS += i915g
+endif
+ifeq ($(strip $(BOARD_USES_R300G)),true)
+DRM_GPU_DRIVERS += r300g
+endif
+ifeq ($(strip $(BOARD_USES_R600G)),true)
+DRM_GPU_DRIVERS += r600g
+endif
+ifeq ($(strip $(BOARD_USES_NOUVEAU)),true)
+DRM_GPU_DRIVERS += nouveau
+endif
+ifeq ($(strip $(BOARD_USES_VMWGFX)),true)
+DRM_GPU_DRIVERS += vmwgfx
+endif
+endif # DRM_GPU_DRIVERS
+
+intel_drivers := i915c i965c i915g
+radeon_drivers := r300g r600g
+nouveau_drivers := nouveau
+vmwgfx_drivers := vmwgfx
+
+valid_drivers := \
+	$(intel_drivers) \
+	$(radeon_drivers) \
+	$(nouveau_drivers) \
+	$(vmwgfx_drivers)
+
+# warn about invalid drivers
+invalid_drivers := $(filter-out $(valid_drivers), $(DRM_GPU_DRIVERS))
+ifneq ($(invalid_drivers),)
+$(warning invalid GPU drivers: $(invalid_drivers))
+# tidy up
+DRM_GPU_DRIVERS := $(filter-out $(invalid_drivers), $(DRM_GPU_DRIVERS))
+endif
+
+ifneq ($(filter $(vmwgfx_drivers), $(DRM_GPU_DRIVERS)),)
+DRM_USES_PIPE := true
+else
+DRM_USES_PIPE := false
+endif
+
+ifneq ($(strip $(DRM_GPU_DRIVERS)),)
 
 LOCAL_PATH := $(call my-dir)
+
 include $(CLEAR_VARS)
-
-DRM_USES_INTEL := $(findstring true, \
-	$(BOARD_USES_I915C) \
-	$(BOARD_USES_I965C) \
-	$(BOARD_USES_I915G) \
-	$(BOARD_USES_I965G))
-
-DRM_USES_RADEON := $(findstring true, \
-	$(BOARD_USES_R300G) \
-	$(BOARD_USES_R600G))
-
-DRM_USES_NOUVEAU := $(findstring true, \
-	$(BOARD_USES_NOUVEAU))
-
-DRM_USES_PIPE := false
 
 LOCAL_SRC_FILES := \
 	gralloc.c \
@@ -59,26 +97,26 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_SHARED_LIBRARIES += \
 	libGLESv1_CM
 
-ifeq ($(strip $(DRM_USES_INTEL)),true)
+ifneq ($(filter $(intel_drivers), $(DRM_GPU_DRIVERS)),)
 LOCAL_SRC_FILES += gralloc_drm_intel.c
 LOCAL_C_INCLUDES += external/drm/intel
 LOCAL_CFLAGS += -DENABLE_INTEL
 LOCAL_SHARED_LIBRARIES += libdrm_intel
-endif # DRM_USES_INTEL
+endif
 
-ifeq ($(strip $(DRM_USES_RADEON)),true)
+ifneq ($(filter $(radeon_drivers), $(DRM_GPU_DRIVERS)),)
 LOCAL_SRC_FILES += gralloc_drm_radeon.c
 LOCAL_C_INCLUDES += external/drm/radeon
 LOCAL_CFLAGS += -DENABLE_RADEON
 LOCAL_SHARED_LIBRARIES += libdrm_radeon
-endif # DRM_USES_RADEON
+endif
 
-ifeq ($(strip $(DRM_USES_NOUVEAU)),true)
+ifneq ($(filter $(nouveau_drivers), $(DRM_GPU_DRIVERS)),)
 LOCAL_SRC_FILES += gralloc_drm_nouveau.c
 LOCAL_C_INCLUDES += external/drm/nouveau
 LOCAL_CFLAGS += -DENABLE_NOUVEAU
 LOCAL_SHARED_LIBRARIES += libdrm_nouveau
-endif # DRM_USES_NOUVEAU
+endif
 
 ifeq ($(strip $(DRM_USES_PIPE)),true)
 LOCAL_SRC_FILES += gralloc_drm_pipe.c
@@ -89,11 +127,17 @@ LOCAL_C_INCLUDES += \
 	external/mesa/src/gallium/drivers \
 	external/mesa/src/gallium/auxiliary
 
-ifeq ($(strip $(BOARD_USES_R600G)),true)
+ifneq ($(filter r600g, $(DRM_GPU_DRIVERS)),)
 LOCAL_CFLAGS += -DENABLE_PIPE_R600
 LOCAL_STATIC_LIBRARIES += \
 	libmesa_pipe_r600 \
 	libmesa_winsys_r600
+endif
+ifneq ($(filter vmwgfx, $(DRM_GPU_DRIVERS)),)
+LOCAL_CFLAGS += -DENABLE_PIPE_VMWGFX
+LOCAL_STATIC_LIBRARIES += \
+	libmesa_pipe_svga \
+	libmesa_winsys_svga
 endif
 
 LOCAL_STATIC_LIBRARIES += \
@@ -107,4 +151,4 @@ LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 
 include $(BUILD_SHARED_LIBRARY)
 
-endif # BOARD_USES_DRM
+endif # DRM_GPU_DRIVERS
