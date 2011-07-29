@@ -234,16 +234,37 @@ struct gralloc_drm_bo_t *gralloc_drm_bo_create(struct gralloc_drm_t *drm,
 }
 
 /*
- * Validate a buffer handle and return the associated bo.
+ * Destroy a bo.
  */
-struct gralloc_drm_bo_t *gralloc_drm_bo_validate(struct gralloc_drm_t *drm,
-		buffer_handle_t _handle)
+void gralloc_drm_bo_destroy(struct gralloc_drm_bo_t *bo)
+{
+	struct gralloc_drm_handle_t *handle = bo->handle;
+	int imported = bo->imported;
+
+	bo->drm->drv->free(bo->drm->drv, bo);
+	if (imported) {
+		handle->data_owner = 0;
+		handle->data = 0;
+	}
+	else {
+		free(handle);
+	}
+}
+
+/*
+ * Register a buffer handle and return the associated bo.
+ */
+struct gralloc_drm_bo_t *gralloc_drm_bo_register(struct gralloc_drm_t *drm,
+		buffer_handle_t _handle, int create)
 {
 	struct gralloc_drm_handle_t *handle = gralloc_drm_handle(_handle);
 
 	/* the buffer handle is passed to a new process */
 	if (handle && unlikely(handle->data_owner != gralloc_drm_pid)) {
 		struct gralloc_drm_bo_t *bo;
+
+		if (!create)
+			return NULL;
 
 		/* create the struct gralloc_drm_bo_t locally */
 		if (handle->name)
@@ -264,21 +285,12 @@ struct gralloc_drm_bo_t *gralloc_drm_bo_validate(struct gralloc_drm_t *drm,
 }
 
 /*
- * Destroy a bo.
+ * Unregister a bo.  It is no-op for bo created locally.
  */
-void gralloc_drm_bo_destroy(struct gralloc_drm_bo_t *bo)
+void gralloc_drm_bo_unregister(struct gralloc_drm_bo_t *bo)
 {
-	struct gralloc_drm_handle_t *handle = bo->handle;
-	int imported = bo->imported;
-
-	bo->drm->drv->free(bo->drm->drv, bo);
-	if (imported) {
-		handle->data_owner = 0;
-		handle->data = 0;
-	}
-	else {
-		free(handle);
-	}
+	if (bo->imported)
+		gralloc_drm_bo_destroy(bo);
 }
 
 /*

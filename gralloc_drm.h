@@ -69,8 +69,15 @@ static inline int gralloc_drm_get_bpp(int format)
 }
 
 struct gralloc_drm_bo_t *gralloc_drm_bo_create(struct gralloc_drm_t *drm, int width, int height, int format, int usage);
-struct gralloc_drm_bo_t *gralloc_drm_bo_validate(struct gralloc_drm_t *drm, buffer_handle_t handle);
 void gralloc_drm_bo_destroy(struct gralloc_drm_bo_t *bo);
+
+struct gralloc_drm_bo_t *gralloc_drm_bo_register(struct gralloc_drm_t *drm, buffer_handle_t handle, int create);
+void gralloc_drm_bo_unregister(struct gralloc_drm_bo_t *bo);
+
+static inline struct gralloc_drm_bo_t *gralloc_drm_bo_validate(struct gralloc_drm_t *drm, buffer_handle_t handle)
+{
+	return gralloc_drm_bo_register(drm, handle, 0);
+}
 
 int gralloc_drm_bo_map(struct gralloc_drm_bo_t *bo, int x, int y, int w, int h, int enable_write, void **addr);
 void gralloc_drm_bo_unmap(struct gralloc_drm_bo_t *bo);
