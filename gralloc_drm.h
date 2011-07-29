@@ -79,8 +79,8 @@ static inline struct gralloc_drm_bo_t *gralloc_drm_bo_validate(struct gralloc_dr
 	return gralloc_drm_bo_register(drm, handle, 0);
 }
 
-int gralloc_drm_bo_map(struct gralloc_drm_bo_t *bo, int x, int y, int w, int h, int enable_write, void **addr);
-void gralloc_drm_bo_unmap(struct gralloc_drm_bo_t *bo);
+int gralloc_drm_bo_lock(struct gralloc_drm_bo_t *bo, int x, int y, int w, int h, int enable_write, void **addr);
+void gralloc_drm_bo_unlock(struct gralloc_drm_bo_t *bo);
 buffer_handle_t gralloc_drm_bo_get_handle(struct gralloc_drm_bo_t *bo, int *stride);
 
 int gralloc_drm_bo_need_fb(const struct gralloc_drm_bo_t *bo);

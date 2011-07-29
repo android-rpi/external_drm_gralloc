@@ -294,22 +294,57 @@ void gralloc_drm_bo_unregister(struct gralloc_drm_bo_t *bo)
 }
 
 /*
- * Map a bo for CPU access.
+ * Lock a bo.  XXX thread-safety?
  */
-int gralloc_drm_bo_map(struct gralloc_drm_bo_t *bo,
-		int x, int y, int w, int h,
-		int enable_write, void **addr)
+int gralloc_drm_bo_lock(struct gralloc_drm_bo_t *bo,
+		int usage, int x, int y, int w, int h,
+		void **addr)
 {
-	return bo->drm->drv->map(bo->drm->drv, bo,
-			x, y, w, h, enable_write, addr);
+	if ((bo->handle->usage & usage) != usage)
+		return -EINVAL;
+
+	/* allow multiple locks with compatible usages */
+	if (bo->lock_count && (bo->locked_for & usage) != usage)
+		return -EINVAL;
+
+	usage |= bo->locked_for;
+
+	if (usage & (GRALLOC_USAGE_SW_WRITE_MASK |
+		     GRALLOC_USAGE_SW_READ_MASK)) {
+		/* the driver is supposed to wait for the bo */
+		int write = !!(usage & GRALLOC_USAGE_SW_WRITE_MASK);
+		int err = bo->drm->drv->map(bo->drm->drv, bo,
+				x, y, w, h, write, addr);
+		if (err)
+			return err;
+	}
+	else {
+		/* kernel handles the synchronization here */
+	}
+
+	bo->lock_count++;
+	bo->locked_for |= usage;
+
+	return 0;
 }
 
 /*
- * Unmap a bo.
+ * Unlock a bo.
  */
-void gralloc_drm_bo_unmap(struct gralloc_drm_bo_t *bo)
+void gralloc_drm_bo_unlock(struct gralloc_drm_bo_t *bo)
 {
-	bo->drm->drv->unmap(bo->drm->drv, bo);
+	int mapped = bo->locked_for &
+		(GRALLOC_USAGE_SW_WRITE_MASK | GRALLOC_USAGE_SW_READ_MASK);
+
+	if (!bo->lock_count)
+		return;
+
+	if (mapped)
+		bo->drm->drv->unmap(bo->drm->drv, bo);
+
+	bo->lock_count--;
+	if (!bo->lock_count)
+		bo->locked_for = 0;
 }
 
 /*

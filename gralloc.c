@@ -149,7 +149,7 @@ static int drm_mod_lock(const gralloc_module_t *mod, buffer_handle_t handle,
 	if (!bo)
 		return -EINVAL;
 
-	return gralloc_drm_bo_map(bo, x, y, w, h, 1, ptr);
+	return gralloc_drm_bo_lock(bo, usage, x, y, w, h, ptr);
 }
 
 static int drm_mod_unlock(const gralloc_module_t *mod, buffer_handle_t handle)
@@ -161,7 +161,7 @@ static int drm_mod_unlock(const gralloc_module_t *mod, buffer_handle_t handle)
 	if (!bo)
 		return -EINVAL;
 
-	gralloc_drm_bo_unmap(bo);
+	gralloc_drm_bo_unlock(bo);
 
 	return 0;
 }
