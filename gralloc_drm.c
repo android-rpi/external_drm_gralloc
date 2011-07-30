@@ -300,8 +300,11 @@ int gralloc_drm_bo_lock(struct gralloc_drm_bo_t *bo,
 		int usage, int x, int y, int w, int h,
 		void **addr)
 {
-	if ((bo->handle->usage & usage) != usage)
-		return -EINVAL;
+	if ((bo->handle->usage & usage) != usage) {
+		/* make FB special for testing software renderer with */
+		if (!(bo->handle->usage & GRALLOC_USAGE_HW_FB))
+			return -EINVAL;
+	}
 
 	/* allow multiple locks with compatible usages */
 	if (bo->lock_count && (bo->locked_for & usage) != usage)
