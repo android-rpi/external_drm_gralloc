@@ -115,6 +115,11 @@ static int drm_mod_register_buffer(const gralloc_module_t *mod,
 		buffer_handle_t handle)
 {
 	struct drm_module_t *dmod = (struct drm_module_t *) mod;
+	int err;
+
+	err = drm_init(dmod, 0);
+	if (err)
+		return err;
 
 	return (gralloc_drm_bo_register(dmod->drm, handle, 1)) ? 0 : -EINVAL;
 }
@@ -124,6 +129,11 @@ static int drm_mod_unregister_buffer(const gralloc_module_t *mod,
 {
 	struct drm_module_t *dmod = (struct drm_module_t *) mod;
 	struct gralloc_drm_bo_t *bo;
+	int err;
+
+	err = drm_init(dmod, 0);
+	if (err)
+		return err;
 
 	bo = gralloc_drm_bo_validate(dmod->drm, handle);
 	if (!bo)
