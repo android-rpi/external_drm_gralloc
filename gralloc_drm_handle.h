@@ -51,10 +51,10 @@ static inline struct gralloc_drm_handle_t *gralloc_drm_handle(buffer_handle_t _h
 	struct gralloc_drm_handle_t *handle =
 		(struct gralloc_drm_handle_t *) _handle;
 
-	if (handle->base.version != sizeof(handle->base) ||
-	    handle->base.numInts != GRALLOC_DRM_HANDLE_NUM_INTS ||
-	    handle->base.numFds != GRALLOC_DRM_HANDLE_NUM_FDS ||
-	    handle->magic != GRALLOC_DRM_HANDLE_MAGIC)
+	if (handle && (handle->base.version != sizeof(handle->base) ||
+	               handle->base.numInts != GRALLOC_DRM_HANDLE_NUM_INTS ||
+	               handle->base.numFds != GRALLOC_DRM_HANDLE_NUM_FDS ||
+	               handle->magic != GRALLOC_DRM_HANDLE_MAGIC))
 		handle = NULL;
 
 	return handle;

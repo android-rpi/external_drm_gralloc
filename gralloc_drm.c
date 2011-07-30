@@ -259,8 +259,11 @@ struct gralloc_drm_bo_t *gralloc_drm_bo_register(struct gralloc_drm_t *drm,
 {
 	struct gralloc_drm_handle_t *handle = gralloc_drm_handle(_handle);
 
+	if (!handle)
+		return NULL;
+
 	/* the buffer handle is passed to a new process */
-	if (handle && unlikely(handle->data_owner != gralloc_drm_pid)) {
+	if (unlikely(handle->data_owner != gralloc_drm_pid)) {
 		struct gralloc_drm_bo_t *bo;
 
 		if (!create)
