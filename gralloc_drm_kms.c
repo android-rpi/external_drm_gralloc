@@ -23,11 +23,13 @@
 
 #define LOG_TAG "GRALLOC-KMS"
 
+#include <cutils/properties.h>
 #include <cutils/log.h>
 #include <errno.h>
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "gralloc_drm.h"
 #include "gralloc_drm_priv.h"
 
@@ -356,6 +358,59 @@ static void drm_kms_init_features(struct gralloc_drm_t *drm)
 	LOGD("will use %s for fb posting", swap_mode);
 }
 
+static drmModeModeInfoPtr find_mode(drmModeConnectorPtr connector, int *bpp)
+{
+	char value[PROPERTY_VALUE_MAX];
+	drmModeModeInfoPtr mode;
+	int dist, i;
+	int xres = 0, yres = 0;
+
+	if (property_get("debug.drm.mode", value, NULL)) {
+		char *p = value, *end;
+
+		/* parse <xres>x<yres>[@<bpp>] */
+		if (sscanf(value, "%dx%d@%d", &xres, &yres, bpp) != 3) {
+			*bpp = 0;
+			if (sscanf(value, "%dx%d", &xres, &yres) != 2)
+				xres = yres = 0;
+		}
+	}
+	else {
+		*bpp = 0;
+	}
+
+	mode = NULL;
+	dist = INT_MAX;
+	for (i = 0; i < connector->count_modes; i++) {
+		drmModeModeInfoPtr m = &connector->modes[i];
+		int tmp;
+
+		if (xres && yres) {
+			tmp = (m->hdisplay - xres) * (m->hdisplay - xres) +
+				(m->vdisplay - yres) * (m->vdisplay - yres);
+		}
+		else {
+			/* use the first preferred mode */
+			tmp = (m->type & DRM_MODE_TYPE_PREFERRED) ? 0 : dist;
+		}
+
+		if (tmp < dist) {
+			mode = m;
+			dist = tmp;
+			if (!dist)
+				break;
+		}
+	}
+
+	/* fallback to the first mode */
+	if (!mode)
+		mode = &connector->modes[0];
+
+	*bpp /= 8;
+
+	return mode;
+}
+
 /*
  * Initialize KMS with a connector.
  */
@@ -364,7 +419,7 @@ static int drm_kms_init_with_connector(struct gralloc_drm_t *drm,
 {
 	drmModeEncoderPtr encoder;
 	drmModeModeInfoPtr mode;
-	int i;
+	int bpp, i;
 
 	if (!connector->count_modes)
 		return -EINVAL;
@@ -384,20 +439,17 @@ static int drm_kms_init_with_connector(struct gralloc_drm_t *drm,
 	drm->crtc_id = drm->resources->crtcs[i];
 	drm->connector_id = connector->connector_id;
 
-	/* find the first preferred mode */
-	mode = NULL;
-	for (i = 0; i < connector->count_modes; i++) {
-		drmModeModeInfoPtr m = &connector->modes[i];
-		if (m->type & DRM_MODE_TYPE_PREFERRED) {
-			mode = m;
-			break;
-		}
-	}
-	/* no preference; use the first */
-	if (!mode)
-		mode = &connector->modes[0];
-
+	mode = find_mode(connector, &bpp);
 	drm->mode = *mode;
+	switch (bpp) {
+	case 2:
+		drm->fb_format = HAL_PIXEL_FORMAT_RGB_565;
+		break;
+	case 4:
+	default:
+		drm->fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
+		break;
+	}
 
 	if (connector->mmWidth && connector->mmHeight) {
 		drm->xdpi = (drm->mode.hdisplay * 25.4 / connector->mmWidth);
