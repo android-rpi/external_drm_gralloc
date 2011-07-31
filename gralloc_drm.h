@@ -39,6 +39,9 @@ int gralloc_drm_set_master(struct gralloc_drm_t *drm);
 void gralloc_drm_drop_master(struct gralloc_drm_t *drm);
 
 int gralloc_drm_init_kms(struct gralloc_drm_t *drm);
+void gralloc_drm_fini_kms(struct gralloc_drm_t *drm);
+int gralloc_drm_is_kms_initialized(struct gralloc_drm_t *drm);
+
 void gralloc_drm_get_kms_info(struct gralloc_drm_t *drm, struct framebuffer_device_t *fb);
 int gralloc_drm_is_kms_pipelined(struct gralloc_drm_t *drm);
 

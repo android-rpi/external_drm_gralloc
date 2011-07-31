@@ -277,18 +277,18 @@ static struct gralloc_drm_t *drm_singleton;
 
 static void on_signal(int sig)
 {
-   struct sigaction act;
+	struct gralloc_drm_t *drm = drm_singleton;
 
-   /* wait the pending flip */
-   if (drm_singleton && drm_singleton->next_front) {
-      /* there is race, but this function is hacky enough to ignore that */
-      if (drm_singleton->waiting_flip)
-         usleep(100 * 1000); /* 100ms */
-      else
-         drm_kms_page_flip(drm_singleton, NULL);
-   }
+	/* wait the pending flip */
+	if (drm && drm->swap_mode == DRM_SWAP_FLIP && drm->next_front) {
+		/* there is race, but this function is hacky enough to ignore that */
+		if (drm_singleton->waiting_flip)
+			usleep(100 * 1000); /* 100ms */
+		else
+			drm_kms_page_flip(drm_singleton, NULL);
+	}
 
-   exit(-1);
+	exit(-1);
 }
 
 static void drm_kms_init_features(struct gralloc_drm_t *drm)
@@ -514,6 +514,41 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 	drm->first_post = 1;
 
 	return 0;
+}
+
+void gralloc_drm_fini_kms(struct gralloc_drm_t *drm)
+{
+	switch (drm->swap_mode) {
+	case DRM_SWAP_FLIP:
+		drm_kms_page_flip(drm, NULL);
+		break;
+	case DRM_SWAP_COPY:
+		{
+			struct gralloc_drm_bo_t **bo = (drm->current_front) ?
+				&drm->current_front : &drm->next_front;
+
+			if (*bo)
+				gralloc_drm_bo_destroy(*bo);
+			*bo = NULL;
+		}
+		break;
+	default:
+		break;
+	}
+
+	/* restore crtc? */
+
+	if (drm->resources) {
+		drmModeFreeResources(drm->resources);
+		drm->resources = NULL;
+	}
+
+	drm_singleton = NULL;
+}
+
+int gralloc_drm_is_kms_initialized(struct gralloc_drm_t *drm)
+{
+	return (drm->resources != NULL);
 }
 
 /*
