@@ -180,6 +180,68 @@ void gralloc_drm_drop_master(struct gralloc_drm_t *drm)
 }
 
 /*
+ * Validate a buffer handle and return the associated bo.
+ */
+static struct gralloc_drm_bo_t *validate_handle(buffer_handle_t _handle,
+		struct gralloc_drm_t *drm)
+{
+	struct gralloc_drm_handle_t *handle = gralloc_drm_handle(_handle);
+
+	if (!handle)
+		return NULL;
+
+	/* the buffer handle is passed to a new process */
+	if (unlikely(handle->data_owner != gralloc_drm_pid)) {
+		struct gralloc_drm_bo_t *bo;
+
+		/* check only */
+		if (!drm)
+			return NULL;
+
+		/* create the struct gralloc_drm_bo_t locally */
+		if (handle->name)
+			bo = drm->drv->alloc(drm->drv, handle);
+		else /* an invalid handle */
+			bo = NULL;
+		if (bo) {
+			bo->drm = drm;
+			bo->imported = 1;
+			bo->handle = handle;
+		}
+
+		handle->data_owner = gralloc_drm_get_pid();
+		handle->data = (int) bo;
+	}
+
+	return (struct gralloc_drm_bo_t *) handle->data;
+}
+
+/*
+ * Register a buffer handle.
+ */
+int gralloc_drm_handle_register(buffer_handle_t handle, struct gralloc_drm_t *drm)
+{
+	return (validate_handle(handle, drm)) ? 0 : -EINVAL;
+}
+
+/*
+ * Unregister a buffer handle.  It is no-op for handles created locally.
+ */
+int gralloc_drm_handle_unregister(buffer_handle_t handle)
+{
+	struct gralloc_drm_bo_t *bo;
+
+	bo = validate_handle(handle, NULL);
+	if (!bo)
+		return -EINVAL;
+
+	if (bo->imported)
+		gralloc_drm_bo_destroy(bo);
+
+	return 0;
+}
+
+/*
  * Create a buffer handle.
  */
 static struct gralloc_drm_handle_t *create_bo_handle(int width,
@@ -252,48 +314,21 @@ void gralloc_drm_bo_destroy(struct gralloc_drm_bo_t *bo)
 }
 
 /*
- * Register a buffer handle and return the associated bo.
+ * Return the bo of a registered handle.
  */
-struct gralloc_drm_bo_t *gralloc_drm_bo_register(struct gralloc_drm_t *drm,
-		buffer_handle_t _handle, int create)
+struct gralloc_drm_bo_t *gralloc_drm_bo_from_handle(buffer_handle_t handle)
 {
-	struct gralloc_drm_handle_t *handle = gralloc_drm_handle(_handle);
-
-	if (!handle)
-		return NULL;
-
-	/* the buffer handle is passed to a new process */
-	if (unlikely(handle->data_owner != gralloc_drm_pid)) {
-		struct gralloc_drm_bo_t *bo;
-
-		if (!create)
-			return NULL;
-
-		/* create the struct gralloc_drm_bo_t locally */
-		if (handle->name)
-			bo = drm->drv->alloc(drm->drv, handle);
-		else /* an invalid handle */
-			bo = NULL;
-		if (bo) {
-			bo->drm = drm;
-			bo->imported = 1;
-			bo->handle = handle;
-		}
-
-		handle->data_owner = gralloc_drm_get_pid();
-		handle->data = (int) bo;
-	}
-
-	return (struct gralloc_drm_bo_t *) handle->data;
+	return validate_handle(handle, NULL);
 }
 
 /*
- * Unregister a bo.  It is no-op for bo created locally.
+ * Get the buffer handle and stride of a bo.
  */
-void gralloc_drm_bo_unregister(struct gralloc_drm_bo_t *bo)
+buffer_handle_t gralloc_drm_bo_get_handle(struct gralloc_drm_bo_t *bo, int *stride)
 {
-	if (bo->imported)
-		gralloc_drm_bo_destroy(bo);
+	if (stride)
+		*stride = bo->handle->stride;
+	return &bo->handle->base;
 }
 
 /*
@@ -351,14 +386,4 @@ void gralloc_drm_bo_unlock(struct gralloc_drm_bo_t *bo)
 	bo->lock_count--;
 	if (!bo->lock_count)
 		bo->locked_for = 0;
-}
-
-/*
- * Get the buffer handle and stride of a bo.
- */
-buffer_handle_t gralloc_drm_bo_get_handle(struct gralloc_drm_bo_t *bo, int *stride)
-{
-	if (stride)
-		*stride = bo->handle->stride;
-	return &bo->handle->base;
 }

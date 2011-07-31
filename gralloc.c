@@ -121,41 +121,22 @@ static int drm_mod_register_buffer(const gralloc_module_t *mod,
 	if (err)
 		return err;
 
-	return (gralloc_drm_bo_register(dmod->drm, handle, 1)) ? 0 : -EINVAL;
+	return gralloc_drm_handle_register(handle, dmod->drm);
 }
 
 static int drm_mod_unregister_buffer(const gralloc_module_t *mod,
 		buffer_handle_t handle)
 {
-	struct drm_module_t *dmod = (struct drm_module_t *) mod;
-	struct gralloc_drm_bo_t *bo;
-	int err;
-
-	err = drm_init(dmod, 0);
-	if (err)
-		return err;
-
-	bo = gralloc_drm_bo_validate(dmod->drm, handle);
-	if (!bo)
-		return -EINVAL;
-
-	gralloc_drm_bo_unregister(bo);
-
-	return 0;
+	return gralloc_drm_handle_unregister(handle);
 }
 
 static int drm_mod_lock(const gralloc_module_t *mod, buffer_handle_t handle,
 		int usage, int x, int y, int w, int h, void **ptr)
 {
-	struct drm_module_t *dmod = (struct drm_module_t *) mod;
 	struct gralloc_drm_bo_t *bo;
 	int err;
 
-	err = drm_init(dmod, 0);
-	if (err)
-		return err;
-
-	bo = gralloc_drm_bo_validate(dmod->drm, handle);
+	bo = gralloc_drm_bo_from_handle(handle);
 	if (!bo)
 		return -EINVAL;
 
@@ -167,7 +148,7 @@ static int drm_mod_unlock(const gralloc_module_t *mod, buffer_handle_t handle)
 	struct drm_module_t *dmod = (struct drm_module_t *) mod;
 	struct gralloc_drm_bo_t *bo;
 
-	bo = gralloc_drm_bo_validate(dmod->drm, handle);
+	bo = gralloc_drm_bo_from_handle(handle);
 	if (!bo)
 		return -EINVAL;
 
@@ -190,7 +171,7 @@ static int drm_mod_free_gpu0(alloc_device_t *dev, buffer_handle_t handle)
 	struct drm_module_t *dmod = (struct drm_module_t *) dev->common.module;
 	struct gralloc_drm_bo_t *bo;
 
-	bo = gralloc_drm_bo_validate(dmod->drm, handle);
+	bo = gralloc_drm_bo_from_handle(handle);
 	if (!bo)
 		return -EINVAL;
 
@@ -282,7 +263,7 @@ static int drm_mod_post_fb0(struct framebuffer_device_t *fb,
 	struct drm_module_t *dmod = (struct drm_module_t *) fb->common.module;
 	struct gralloc_drm_bo_t *bo;
 
-	bo = gralloc_drm_bo_validate(dmod->drm, handle);
+	bo = gralloc_drm_bo_from_handle(handle);
 	if (!bo)
 		return -EINVAL;
 
