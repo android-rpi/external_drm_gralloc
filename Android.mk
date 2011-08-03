@@ -26,10 +26,10 @@ DRM_GPU_DRIVERS := $(BOARD_GPU_DRIVERS)
 # convert board uses to DRM_GPU_DRIVERS
 ifeq ($(strip $(DRM_GPU_DRIVERS)),)
 ifeq ($(strip $(BOARD_USES_I915C)),true)
-DRM_GPU_DRIVERS += i915c
+DRM_GPU_DRIVERS += i915
 endif
 ifeq ($(strip $(BOARD_USES_I965C)),true)
-DRM_GPU_DRIVERS += i965c
+DRM_GPU_DRIVERS += i965
 endif
 ifeq ($(strip $(BOARD_USES_I915G)),true)
 DRM_GPU_DRIVERS += i915g
@@ -48,7 +48,7 @@ DRM_GPU_DRIVERS += vmwgfx
 endif
 endif # DRM_GPU_DRIVERS
 
-intel_drivers := i915c i965c i915g
+intel_drivers := i915 i965 i915g
 radeon_drivers := r300g r600g
 nouveau_drivers := nouveau
 vmwgfx_drivers := vmwgfx
