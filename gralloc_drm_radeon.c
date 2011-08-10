@@ -40,17 +40,13 @@
 #include "gralloc_drm.h"
 #include "gralloc_drm_priv.h"
 
+#include "radeon/radeon.h"
+#include "radeon/radeon_chipinfo_gen.h"
+
 #define RADEON_GPU_PAGE_SIZE 4096
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define ALIGN(val, align) (((val) + (align) - 1) & ~((align) - 1))
-
-enum {
-	CHIP_FAMILY_R600,
-	CHIP_FAMILY_CEDAR,
-	CHIP_FAMILY_PALM,
-	CHIP_FAMILY_LAST
-};
 
 struct radeon_info {
 	struct gralloc_drm_drv_t base;
@@ -58,8 +54,10 @@ struct radeon_info {
 	int fd;
 	struct radeon_bo_manager *bufmgr;
 
-	int chipset;
-	int chip_family;
+	uint32_t chipset;
+	RADEONChipFamily chip_family;
+	int is_mobility;
+	int is_igp;
 
 	uint32_t tile_config;
 	int num_channels;
@@ -464,6 +462,7 @@ static int radeon_probe(struct radeon_info *info)
 {
 	struct drm_radeon_info kinfo;
 	struct drm_radeon_gem_info mminfo;
+	unsigned int i;
 	int err;
 
 	memset(&kinfo, 0, sizeof(kinfo));
@@ -475,14 +474,18 @@ static int radeon_probe(struct radeon_info *info)
 		return err;
 	}
 
-	/* XXX this is wrong and a table should be used */
-	if (info->chipset >= 0x68e4 && info->chipset <= 0x68fe) {
-		info->chip_family = CHIP_FAMILY_CEDAR;
+	for (i = 0; i < sizeof(RADEONCards) / sizeof(RADEONCards[0]); i++) {
+		const RADEONCardInfo *card = &RADEONCards[i];
+
+		if (info->chipset == card->pci_device_id) {
+			info->chip_family = card->chip_family;
+			info->is_mobility = card->mobility;
+			info->is_igp = card->igp;
+			break;
+		}
 	}
-	else if (info->chipset >= 0x9802 && info->chipset <= 0x9807) {
-		info->chip_family = CHIP_FAMILY_PALM;
-	}
-	else {
+
+	if (info->chip_family == CHIP_FAMILY_UNKNOW) {
 		LOGE("unknown device id 0x%04x", info->chipset);
 		return -EINVAL;
 	}
@@ -506,9 +509,8 @@ static int radeon_probe(struct radeon_info *info)
 	info->vram_size = mminfo.vram_visible;
 	info->gart_size = mminfo.gart_size;
 
-	LOGI("detected chip family %s (vram size %dMiB, gart size %dMiB)",
-			(info->chip_family == CHIP_FAMILY_CEDAR) ?
-			"CEDAR" : "PALM",
+	LOGI("detected chipset 0x%04x family 0x%02x (vram size %dMiB, gart size %dMiB)",
+			info->chipset, info->chip_family,
 			info->vram_size / 1024 / 1024,
 			info->gart_size / 1024 / 1024);
 
