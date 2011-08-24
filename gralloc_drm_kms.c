@@ -85,10 +85,8 @@ static int drm_kms_set_crtc(struct gralloc_drm_t *drm, int fb_id)
 		return ret;
 	}
 
-#ifdef DRM_MODE_FEATURE_DIRTYFB
-	if (drm->mode_dirty_fb)
+	if (drm->mode_quirk_vmwgfx)
 		ret = drmModeDirtyFB(drm->fd, fb_id, &drm->clip, 1);
-#endif
 
 	return ret;
 }
@@ -149,6 +147,9 @@ static void drm_kms_wait_for_post(struct gralloc_drm_t *drm, int flip)
 	unsigned int current, target;
 	drmVBlank vbl;
 	int ret;
+
+	if (drm->mode_quirk_vmwgfx)
+		return;
 
 	flip = !!flip;
 
@@ -257,6 +258,8 @@ int gralloc_drm_bo_post(struct gralloc_drm_bo_t *bo)
 				bo, 0, 0,
 				bo->handle->width,
 				bo->handle->height);
+		if (drm->mode_quirk_vmwgfx)
+			ret = drmModeDirtyFB(drm->fd, drm->current_front->fb_id, &drm->clip, 1);
 		ret = 0;
 		break;
 	case DRM_SWAP_SETCRTC:

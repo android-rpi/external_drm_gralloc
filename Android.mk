@@ -138,6 +138,8 @@ LOCAL_CFLAGS += -DENABLE_PIPE_VMWGFX
 LOCAL_STATIC_LIBRARIES += \
 	libmesa_pipe_svga \
 	libmesa_winsys_svga
+LOCAL_C_INCLUDES += \
+	external/mesa/src/gallium/drivers/svga/include
 endif
 
 LOCAL_STATIC_LIBRARIES += \

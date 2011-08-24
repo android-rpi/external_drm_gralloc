@@ -56,7 +56,7 @@ struct gralloc_drm_t {
 	int fb_format;
 	enum drm_swap_mode swap_mode;
 	int swap_interval;
-	int mode_dirty_fb;
+	int mode_quirk_vmwgfx;
 	int mode_sync_flip; /* page flip should block */
 	int vblank_secondary;
 

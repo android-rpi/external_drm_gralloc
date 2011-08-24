@@ -346,8 +346,14 @@ static void pipe_init_kms_features(struct gralloc_drm_drv_t *drv, struct gralloc
 		break;
 	}
 
-	drm->mode_dirty_fb = (strcmp(pm->driver, "vmwgfx") == 0);
-	drm->swap_mode = DRM_SWAP_FLIP;
+	if (strcmp(pm->driver, "vmwgfx") == 0) {
+		drm->mode_quirk_vmwgfx = 1;
+		drm->swap_mode = DRM_SWAP_COPY;
+	}
+	else {
+		drm->mode_quirk_vmwgfx = 0;
+		drm->swap_mode = DRM_SWAP_FLIP;
+	}
 	drm->mode_sync_flip = 1;
 	drm->swap_interval = 1;
 	drm->vblank_secondary = 0;
@@ -373,6 +379,7 @@ static void pipe_destroy(struct gralloc_drm_drv_t *drv)
 #include "r600/r600_public.h"
 /* for vmwgfx */
 #include "svga/drm/svga_drm_public.h"
+#include "svga/svga_winsys.h"
 #include "svga/svga_public.h"
 /* for debug */
 #include "target-helpers/inline_debug_helper.h"
@@ -461,6 +468,12 @@ static int pipe_get_pci_id(struct pipe_manager *pm,
 	else if (strcmp(name, "nouveau") == 0) {
 		*vendor = 0x10de;
 		*device = 0;
+		err = 0;
+	}
+	else if (strcmp(name, "vmwgfx") == 0) {
+		*vendor = 0x15ad;
+		/* assume SVGA II */
+		*device = 0x0405;
 		err = 0;
 	}
 	else {
