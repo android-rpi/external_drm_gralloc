@@ -224,7 +224,6 @@ int gralloc_drm_bo_post(struct gralloc_drm_bo_t *bo)
 			bo = dst;
 		}
 
-		drm_kms_wait_for_post(drm, 0);
 		ret = drm_kms_set_crtc(drm, bo->fb_id);
 		if (!ret) {
 			drm->first_post = 0;
