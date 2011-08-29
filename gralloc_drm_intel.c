@@ -505,7 +505,7 @@ static void intel_init_kms_features(struct gralloc_drm_drv_t *drv,
 		break;
 	}
 
-	drm->mode_dirty_fb = 0;
+	drm->mode_quirk_vmwgfx = 0;
 	/* why? */
 	drm->mode_sync_flip = 1;
 

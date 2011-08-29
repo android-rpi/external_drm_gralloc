@@ -332,7 +332,7 @@ static void drm_gem_radeon_init_kms_features(struct gralloc_drm_drv_t *drv,
 		break;
 	}
 
-	drm->mode_dirty_fb = 0;
+	drm->mode_quirk_vmwgfx = 0;
 	drm->swap_mode = DRM_SWAP_FLIP;
 	drm->mode_sync_flip = 1;
 	drm->swap_interval = 1;
