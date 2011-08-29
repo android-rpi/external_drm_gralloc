@@ -21,32 +21,7 @@
 
 # Android.mk for drm_gralloc
 
-DRM_GPU_DRIVERS := $(BOARD_GPU_DRIVERS)
-
-# convert board uses to DRM_GPU_DRIVERS
-ifeq ($(strip $(DRM_GPU_DRIVERS)),)
-ifeq ($(strip $(BOARD_USES_I915C)),true)
-DRM_GPU_DRIVERS += i915
-endif
-ifeq ($(strip $(BOARD_USES_I965C)),true)
-DRM_GPU_DRIVERS += i965
-endif
-ifeq ($(strip $(BOARD_USES_I915G)),true)
-DRM_GPU_DRIVERS += i915g
-endif
-ifeq ($(strip $(BOARD_USES_R300G)),true)
-DRM_GPU_DRIVERS += r300g
-endif
-ifeq ($(strip $(BOARD_USES_R600G)),true)
-DRM_GPU_DRIVERS += r600g
-endif
-ifeq ($(strip $(BOARD_USES_NOUVEAU)),true)
-DRM_GPU_DRIVERS += nouveau
-endif
-ifeq ($(strip $(BOARD_USES_VMWGFX)),true)
-DRM_GPU_DRIVERS += vmwgfx
-endif
-endif # DRM_GPU_DRIVERS
+DRM_GPU_DRIVERS := $(strip $(filter-out swrast, $(BOARD_GPU_DRIVERS)))
 
 intel_drivers := i915 i965 i915g
 radeon_drivers := r300g r600g
