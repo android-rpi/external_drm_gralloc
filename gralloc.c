@@ -30,7 +30,6 @@
 #include <errno.h>
 
 #include "gralloc_drm.h"
-#include "gralloc_drm_handle.h"
 
 struct drm_module_t {
 	gralloc_module_t base;
