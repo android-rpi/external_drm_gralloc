@@ -376,6 +376,11 @@ static drmModeModeInfoPtr find_mode(drmModeConnectorPtr connector, int *bpp)
 			if (sscanf(value, "%dx%d", &xres, &yres) != 2)
 				xres = yres = 0;
 		}
+
+		if ((xres && yres) || *bpp) {
+			LOGI("will find the closest match for %dx%d@%d",
+					xres, yres, *bpp);
+		}
 	}
 	else {
 		*bpp = 0;
@@ -441,7 +446,24 @@ static int drm_kms_init_with_connector(struct gralloc_drm_t *drm,
 	drm->crtc_id = drm->resources->crtcs[i];
 	drm->connector_id = connector->connector_id;
 
+	/* print connector info */
+	if (connector->count_modes > 1) {
+		LOGI("there are %d modes on connector 0x%x",
+				connector->count_modes,
+				connector->connector_id);
+		for (i = 0; i < connector->count_modes; i++)
+			LOGI("  %s", connector->modes[i].name);
+	}
+	else {
+		LOGI("there is one mode on connector 0x%d: %s",
+				connector->connector_id,
+				connector->modes[0].name);
+	}
+
 	mode = find_mode(connector, &bpp);
+
+	LOGI("the best mode is %s", mode->name);
+
 	drm->mode = *mode;
 	switch (bpp) {
 	case 2:
