@@ -61,7 +61,14 @@ static inline int gralloc_drm_get_bpp(int format)
 	case HAL_PIXEL_FORMAT_RGB_565:
 	case HAL_PIXEL_FORMAT_RGBA_5551:
 	case HAL_PIXEL_FORMAT_RGBA_4444:
+	case HAL_PIXEL_FORMAT_YCbCr_422_I:
 		bpp = 2;
+		break;
+	/* planar; only Y is considered */
+	case HAL_PIXEL_FORMAT_YV12:
+	case HAL_PIXEL_FORMAT_YCbCr_422_SP:
+	case HAL_PIXEL_FORMAT_YCrCb_420_SP:
+		bpp = 1;
 		break;
 	default:
 		bpp = 0;
@@ -69,6 +76,37 @@ static inline int gralloc_drm_get_bpp(int format)
 	}
 
 	return bpp;
+}
+
+static inline void gralloc_drm_align_geometry(int format, int *width, int *height)
+{
+	int align_w = 1, align_h = 1, extra_height_div = 0;
+
+	switch (format) {
+	case HAL_PIXEL_FORMAT_YV12:
+		align_w = 32;
+		align_h = 2;
+		extra_height_div = 2;
+		break;
+	case HAL_PIXEL_FORMAT_YCbCr_422_SP:
+		align_w = 2;
+		extra_height_div = 1;
+		break;
+	case HAL_PIXEL_FORMAT_YCrCb_420_SP:
+		align_w = 2;
+		align_h = 2;
+		extra_height_div = 2;
+		break;
+	case HAL_PIXEL_FORMAT_YCbCr_422_I:
+		align_w = 2;
+		break;
+	}
+
+	*width = (*width + align_w - 1) & ~(align_w - 1);
+	*height = (*height + align_h - 1) & ~(align_h - 1);
+
+	if (extra_height_div)
+		*height += *height / extra_height_div;
 }
 
 int gralloc_drm_handle_register(buffer_handle_t handle, struct gralloc_drm_t *drm);

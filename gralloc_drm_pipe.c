@@ -76,6 +76,9 @@ static enum pipe_format get_pipe_format(int format)
 		break;
 	case HAL_PIXEL_FORMAT_RGBA_5551:
 	case HAL_PIXEL_FORMAT_RGBA_4444:
+	case HAL_PIXEL_FORMAT_YV12:
+	case HAL_PIXEL_FORMAT_YCbCr_422_SP:
+	case HAL_PIXEL_FORMAT_YCrCb_420_SP:
 	default:
 		fmt = PIPE_FORMAT_NONE;
 		break;

@@ -309,6 +309,11 @@ static drm_intel_bo *alloc_ibo(struct intel_info *info,
 		return NULL;
 	}
 
+	aligned_width = handle->width;
+	aligned_height = handle->height;
+	gralloc_drm_align_geometry(handle->format,
+			&aligned_width, &aligned_height);
+
 	if (handle->usage & GRALLOC_USAGE_HW_FB) {
 		unsigned long max_stride;
 
@@ -319,8 +324,7 @@ static drm_intel_bo *alloc_ibo(struct intel_info *info,
 			max_stride /= 2;
 
 		name = "gralloc-fb";
-		aligned_width = (handle->width + 63) & ~63;
-		aligned_height = handle->height;
+		aligned_width = (aligned_width + 63) & ~63;
 		flags = BO_ALLOC_FOR_RENDER;
 
 		*tiling = I915_TILING_X;
@@ -368,13 +372,11 @@ static drm_intel_bo *alloc_ibo(struct intel_info *info,
 		if (handle->usage & GRALLOC_USAGE_HW_TEXTURE) {
 			name = "gralloc-texture";
 			/* see 2D texture layout of DRI drivers */
-			aligned_width = (handle->width + 3) & ~3;
-			aligned_height = (handle->height + 1) & ~1;
+			aligned_width = (aligned_width + 3) & ~3;
+			aligned_height = (aligned_height + 1) & ~1;
 		}
 		else {
 			name = "gralloc-buffer";
-			aligned_width = handle->width;
-			aligned_height = handle->height;
 		}
 
 		if (handle->usage & GRALLOC_USAGE_HW_RENDER)

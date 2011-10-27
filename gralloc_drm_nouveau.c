@@ -198,9 +198,13 @@ nouveau_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t *handle
 		}
 	}
 	else {
-		int pitch;
+		int width, height, pitch;
 
-		nb->bo = alloc_bo(info, handle->width, handle->height,
+		width = handle->width;
+		height = handle->height;
+		gralloc_drm_align_geometry(handle->format, &width, &height);
+
+		nb->bo = alloc_bo(info, width, height,
 				cpp, handle->usage, &pitch);
 		if (!nb->bo) {
 			LOGE("failed to allocate nouveau bo %dx%dx%d",

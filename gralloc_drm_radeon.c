@@ -201,15 +201,16 @@ static struct radeon_bo *radeon_alloc(struct radeon_info *info,
 	tiling = radeon_get_tiling(info, handle);
 	domain = RADEON_GEM_DOMAIN_VRAM;
 
+	aligned_width = handle->width;
+	aligned_height = handle->height;
+	gralloc_drm_align_geometry(handle->format,
+			&aligned_width, &aligned_height);
+
 	if (handle->usage & (GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_HW_TEXTURE)) {
-		aligned_width = ALIGN(handle->width,
+		aligned_width = ALIGN(aligned_width,
 				radeon_get_pitch_align(info, cpp, tiling));
-		aligned_height = ALIGN(handle->height,
+		aligned_height = ALIGN(aligned_height,
 				radeon_get_height_align(info, tiling));
-	}
-	else {
-		aligned_width = handle->width;
-		aligned_height = handle->height;
 	}
 
 	if (!(handle->usage & (GRALLOC_USAGE_HW_FB |
