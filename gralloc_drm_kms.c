@@ -33,6 +33,8 @@
 #include "gralloc_drm.h"
 #include "gralloc_drm_priv.h"
 
+#include <drm_fourcc.h>
+
 /*
  * Return true if a bo needs fb.
  */
@@ -43,21 +45,72 @@ int gralloc_drm_bo_need_fb(const struct gralloc_drm_bo_t *bo)
 }
 
 /*
+ * Modify pitches, offsets and handles according to
+ * the format and return corresponding drm format value
+ */
+static int resolve_drm_format(struct gralloc_drm_bo_t *bo,
+	uint32_t *pitches, uint32_t *offsets, uint32_t *handles)
+{
+	memset(pitches, 0, 4 * sizeof(uint32_t));
+	memset(offsets, 0, 4 * sizeof(uint32_t));
+	memset(handles, 0, 4 * sizeof(uint32_t));
+
+	pitches[0] = bo->handle->stride;
+	handles[0] = bo->fb_handle;
+
+	switch(bo->handle->format) {
+		case HAL_PIXEL_FORMAT_RGB_888:
+		case HAL_PIXEL_FORMAT_RGBX_8888:
+		case HAL_PIXEL_FORMAT_BGRA_8888:
+			return DRM_FORMAT_ARGB8888;
+		case HAL_PIXEL_FORMAT_RGBA_8888:
+			return DRM_FORMAT_RGBA8888;
+		case HAL_PIXEL_FORMAT_RGB_565:
+			return DRM_FORMAT_RGB565;
+		case HAL_PIXEL_FORMAT_YV12:
+
+			// U and V stride are half of Y plane
+			pitches[2] = pitches[0]/2;
+			pitches[1] = pitches[0]/2;
+
+			// like I420 but U and V are in reverse order
+			offsets[2] = offsets[0] +
+				pitches[0] * bo->handle->height;
+			offsets[1] = offsets[2] +
+				pitches[2] * bo->handle->height/2;
+
+			handles[1] = handles[2] = handles[0];
+
+			return DRM_FORMAT_YUV420;
+		default:
+			return 0;
+	}
+	return 0;
+}
+
+/*
  * Add a fb object for a bo.
  */
 int gralloc_drm_bo_add_fb(struct gralloc_drm_bo_t *bo)
 {
-	uint8_t bpp;
+	uint32_t pitches[4];
+	uint32_t offsets[4];
+	uint32_t handles[4];
 
 	if (bo->fb_id)
 		return 0;
 
-	bpp = gralloc_drm_get_bpp(bo->handle->format) * 8;
+	int drm_format = resolve_drm_format(bo, pitches, offsets, handles);
 
-	return drmModeAddFB(bo->drm->fd,
-			bo->handle->width, bo->handle->height, bpp, bpp,
-			bo->handle->stride, bo->fb_handle,
-			(uint32_t *) &bo->fb_id);
+	if (drm_format == 0) {
+		ALOGE("error resolving drm format");
+		return -EINVAL;
+	}
+
+	return drmModeAddFB2(bo->drm->fd,
+		bo->handle->width, bo->handle->height,
+		drm_format, handles, pitches, offsets,
+		(uint32_t *) &bo->fb_id, 0);
 }
 
 /*
