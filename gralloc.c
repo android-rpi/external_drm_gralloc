@@ -200,7 +200,7 @@ static int drm_mod_alloc_gpu0(alloc_device_t *dev,
 	if (gralloc_drm_bo_need_fb(bo)) {
 		err = gralloc_drm_bo_add_fb(bo);
 		if (err) {
-			LOGE("failed to add fb");
+			ALOGE("failed to add fb");
 			gralloc_drm_bo_destroy(bo);
 			return err;
 		}
@@ -308,7 +308,7 @@ static int drm_mod_open_fb0(struct drm_module_t *dmod, struct hw_device_t **dev)
 
 	*dev = &fb->common;
 
-	LOGI("mode.hdisplay %d\n"
+	ALOGI("mode.hdisplay %d\n"
 	     "mode.vdisplay %d\n"
 	     "mode.vrefresh %f\n"
 	     "format 0x%x\n"

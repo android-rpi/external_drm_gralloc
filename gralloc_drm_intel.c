@@ -127,12 +127,12 @@ batch_flush(struct intel_info *info)
 	size *= sizeof(info->batch[0]);
 	ret = drm_intel_bo_subdata(info->batch_ibo, 0, size, info->batch);
 	if (ret) {
-		LOGE("failed to subdata batch");
+		ALOGE("failed to subdata batch");
 		goto fail;
 	}
 	ret = drm_intel_bo_exec(info->batch_ibo, size, NULL, 0, 0);
 	if (ret) {
-		LOGE("failed to exec batch");
+		ALOGE("failed to exec batch");
 		goto fail;
 	}
 
@@ -205,7 +205,7 @@ static void intel_copy(struct gralloc_drm_drv_t *drv,
 	    dst->handle->height != src->handle->height ||
 	    dst->handle->stride != src->handle->stride ||
 	    dst->handle->format != src->handle->format) {
-		LOGE("copy between incompatible buffers");
+		ALOGE("copy between incompatible buffers");
 		return;
 	}
 
@@ -246,7 +246,7 @@ static void intel_copy(struct gralloc_drm_drv_t *drv,
 		cmd |= XY_SRC_COPY_BLT_WRITE_ALPHA | XY_SRC_COPY_BLT_WRITE_RGB;
 		break;
 	default:
-		LOGE("copy with unsupported format");
+		ALOGE("copy with unsupported format");
 		return;
 	}
 
@@ -305,7 +305,7 @@ static drm_intel_bo *alloc_ibo(struct intel_info *info,
 	flags = 0;
 	bpp = gralloc_drm_get_bpp(handle->format);
 	if (!bpp) {
-		LOGE("unrecognized format 0x%x", handle->format);
+		ALOGE("unrecognized format 0x%x", handle->format);
 		return NULL;
 	}
 
@@ -406,14 +406,14 @@ static struct gralloc_drm_bo_t *intel_alloc(struct gralloc_drm_drv_t *drv,
 		ib->ibo = drm_intel_bo_gem_create_from_name(info->bufmgr,
 				"gralloc-r", handle->name);
 		if (!ib->ibo) {
-			LOGE("failed to create ibo from name %u",
+			ALOGE("failed to create ibo from name %u",
 					handle->name);
 			free(ib);
 			return NULL;
 		}
 
 		if (drm_intel_bo_get_tiling(ib->ibo, &ib->tiling, &dummy)) {
-			LOGE("failed to get ibo tiling");
+			ALOGE("failed to get ibo tiling");
 			drm_intel_bo_unreference(ib->ibo);
 			free(ib);
 			return NULL;
@@ -424,7 +424,7 @@ static struct gralloc_drm_bo_t *intel_alloc(struct gralloc_drm_drv_t *drv,
 
 		ib->ibo = alloc_ibo(info, handle, &ib->tiling, &stride);
 		if (!ib->ibo) {
-			LOGE("failed to allocate ibo %dx%d (format %d)",
+			ALOGE("failed to allocate ibo %dx%d (format %d)",
 					handle->width,
 					handle->height,
 					handle->format);
@@ -435,7 +435,7 @@ static struct gralloc_drm_bo_t *intel_alloc(struct gralloc_drm_drv_t *drv,
 		handle->stride = stride;
 
 		if (drm_intel_bo_flink(ib->ibo, (uint32_t *) &handle->name)) {
-			LOGE("failed to flink ibo");
+			ALOGE("failed to flink ibo");
 			drm_intel_bo_unreference(ib->ibo);
 			free(ib);
 			return NULL;
@@ -570,14 +570,14 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_intel(int fd)
 
 	info = calloc(1, sizeof(*info));
 	if (!info) {
-		LOGE("failed to allocate driver info");
+		ALOGE("failed to allocate driver info");
 		return NULL;
 	}
 
 	info->fd = fd;
 	info->bufmgr = drm_intel_bufmgr_gem_init(info->fd, 16 * 1024);
 	if (!info->bufmgr) {
-		LOGE("failed to create buffer manager");
+		ALOGE("failed to create buffer manager");
 		free(info);
 		return NULL;
 	}

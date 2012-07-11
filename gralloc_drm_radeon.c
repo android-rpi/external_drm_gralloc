@@ -194,7 +194,7 @@ static struct radeon_bo *radeon_alloc(struct radeon_info *info,
 
 	cpp = gralloc_drm_get_bpp(handle->format);
 	if (!cpp) {
-		LOGE("unrecognized format 0x%x", handle->format);
+		ALOGE("unrecognized format 0x%x", handle->format);
 		return NULL;
 	}
 
@@ -224,7 +224,7 @@ static struct radeon_bo *radeon_alloc(struct radeon_info *info,
 
 	rbo = radeon_bo_open(info->bufmgr, 0, size, base_align, domain, 0);
 	if (!rbo) {
-		LOGE("failed to allocate rbo %dx%dx%d",
+		ALOGE("failed to allocate rbo %dx%dx%d",
 				handle->width, handle->height, cpp);
 		return NULL;
 	}
@@ -234,7 +234,7 @@ static struct radeon_bo *radeon_alloc(struct radeon_info *info,
 
 	if (radeon_gem_get_kernel_name(rbo,
 				(uint32_t *) &handle->name)) {
-		LOGE("failed to flink rbo");
+		ALOGE("failed to flink rbo");
 		radeon_bo_unref(rbo);
 		return NULL;
 	}
@@ -268,7 +268,7 @@ drm_gem_radeon_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t 
 		rbuf->rbo = radeon_bo_open(info->bufmgr,
 				handle->name, 0, 0, 0, 0);
 		if (!rbuf->rbo) {
-			LOGE("failed to create rbo from name %u",
+			ALOGE("failed to create rbo from name %u",
 					handle->name);
 			free(rbuf);
 			return NULL;
@@ -471,7 +471,7 @@ static int radeon_probe(struct radeon_info *info)
 	kinfo.value = (long) &info->chipset;
 	err = drmCommandWriteRead(info->fd, DRM_RADEON_INFO, &kinfo, sizeof(kinfo));
 	if (err) {
-		LOGE("failed to get device id");
+		ALOGE("failed to get device id");
 		return err;
 	}
 
@@ -487,13 +487,13 @@ static int radeon_probe(struct radeon_info *info)
 	}
 
 	if (info->chip_family == CHIP_FAMILY_UNKNOW) {
-		LOGE("unknown device id 0x%04x", info->chipset);
+		ALOGE("unknown device id 0x%04x", info->chipset);
 		return -EINVAL;
 	}
 
 	err = radeon_init_tile_config(info);
 	if (err) {
-		LOGE("failed to get tiling config");
+		ALOGE("failed to get tiling config");
 		return err;
 	}
 
@@ -503,14 +503,14 @@ static int radeon_probe(struct radeon_info *info)
 	memset(&mminfo, 0, sizeof(mminfo));
 	err = drmCommandWriteRead(info->fd, DRM_RADEON_GEM_INFO, &mminfo, sizeof(mminfo));
 	if (err) {
-		LOGE("failed to get gem info");
+		ALOGE("failed to get gem info");
 		return err;
 	}
 
 	info->vram_size = mminfo.vram_visible;
 	info->gart_size = mminfo.gart_size;
 
-	LOGI("detected chipset 0x%04x family 0x%02x (vram size %dMiB, gart size %dMiB)",
+	ALOGI("detected chipset 0x%04x family 0x%02x (vram size %dMiB, gart size %dMiB)",
 			info->chipset, info->chip_family,
 			info->vram_size / 1024 / 1024,
 			info->gart_size / 1024 / 1024);
@@ -534,7 +534,7 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_radeon(int fd)
 
 	info->bufmgr = radeon_bo_manager_gem_ctor(info->fd);
 	if (!info->bufmgr) {
-		LOGE("failed to create buffer manager");
+		ALOGE("failed to create buffer manager");
 		free(info);
 		return NULL;
 	}

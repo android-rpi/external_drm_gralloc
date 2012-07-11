@@ -81,7 +81,7 @@ static int drm_kms_set_crtc(struct gralloc_drm_t *drm, int fb_id)
 	ret = drmModeSetCrtc(drm->fd, drm->crtc_id, fb_id,
 			0, 0, &drm->connector_id, 1, &drm->mode);
 	if (ret) {
-		LOGE("failed to set crtc");
+		ALOGE("failed to set crtc");
 		return ret;
 	}
 
@@ -120,7 +120,7 @@ static int drm_kms_page_flip(struct gralloc_drm_t *drm,
 		drm->waiting_flip = 0;
 		if (drm->next_front) {
 			/* record an error and break */
-			LOGE("drmHandleEvent returned without flipping");
+			ALOGE("drmHandleEvent returned without flipping");
 			drm->current_front = drm->next_front;
 			drm->next_front = NULL;
 		}
@@ -132,7 +132,7 @@ static int drm_kms_page_flip(struct gralloc_drm_t *drm,
 	ret = drmModePageFlip(drm->fd, drm->crtc_id, bo->fb_id,
 			DRM_MODE_PAGE_FLIP_EVENT, (void *) drm);
 	if (ret)
-		LOGE("failed to perform page flip");
+		ALOGE("failed to perform page flip");
 	else
 		drm->next_front = bo;
 
@@ -162,7 +162,7 @@ static void drm_kms_wait_for_post(struct gralloc_drm_t *drm, int flip)
 	/* get the current vblank */
 	ret = drmWaitVBlank(drm->fd, &vbl);
 	if (ret) {
-		LOGW("failed to get vblank");
+		ALOGW("failed to get vblank");
 		return;
 	}
 
@@ -188,7 +188,7 @@ static void drm_kms_wait_for_post(struct gralloc_drm_t *drm, int flip)
 
 		ret = drmWaitVBlank(drm->fd, &vbl);
 		if (ret) {
-			LOGW("failed to wait vblank");
+			ALOGW("failed to wait vblank");
 			return;
 		}
 	}
@@ -205,7 +205,7 @@ int gralloc_drm_bo_post(struct gralloc_drm_bo_t *bo)
 	int ret;
 
 	if (!bo->fb_id && drm->swap_mode != DRM_SWAP_COPY) {
-		LOGE("unable to post bo %p without fb", bo);
+		ALOGE("unable to post bo %p without fb", bo);
 		return -EINVAL;
 	}
 
@@ -357,7 +357,7 @@ static void drm_kms_init_features(struct gralloc_drm_t *drm)
 		break;
 	}
 
-	LOGD("will use %s for fb posting", swap_mode);
+	ALOGD("will use %s for fb posting", swap_mode);
 }
 
 static drmModeModeInfoPtr find_mode(drmModeConnectorPtr connector, int *bpp)
@@ -378,7 +378,7 @@ static drmModeModeInfoPtr find_mode(drmModeConnectorPtr connector, int *bpp)
 		}
 
 		if ((xres && yres) || *bpp) {
-			LOGI("will find the closest match for %dx%d@%d",
+			ALOGI("will find the closest match for %dx%d@%d",
 					xres, yres, *bpp);
 		}
 	}
@@ -448,21 +448,21 @@ static int drm_kms_init_with_connector(struct gralloc_drm_t *drm,
 
 	/* print connector info */
 	if (connector->count_modes > 1) {
-		LOGI("there are %d modes on connector 0x%x",
+		ALOGI("there are %d modes on connector 0x%x",
 				connector->count_modes,
 				connector->connector_id);
 		for (i = 0; i < connector->count_modes; i++)
-			LOGI("  %s", connector->modes[i].name);
+			ALOGI("  %s", connector->modes[i].name);
 	}
 	else {
-		LOGI("there is one mode on connector 0x%d: %s",
+		ALOGI("there is one mode on connector 0x%d: %s",
 				connector->connector_id,
 				connector->modes[0].name);
 	}
 
 	mode = find_mode(connector, &bpp);
 
-	LOGI("the best mode is %s", mode->name);
+	ALOGI("the best mode is %s", mode->name);
 
 	drm->mode = *mode;
 	switch (bpp) {
@@ -506,7 +506,7 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 
 	drm->resources = drmModeGetResources(drm->fd);
 	if (!drm->resources) {
-		LOGE("failed to get modeset resources");
+		ALOGE("failed to get modeset resources");
 		return -EINVAL;
 	}
 
@@ -527,7 +527,7 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 		}
 	}
 	if (i == drm->resources->count_connectors) {
-		LOGE("failed to find a valid crtc/connector/mode combination");
+		ALOGE("failed to find a valid crtc/connector/mode combination");
 		drmModeFreeResources(drm->resources);
 		drm->resources = NULL;
 

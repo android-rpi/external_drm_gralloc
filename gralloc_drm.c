@@ -63,7 +63,7 @@ init_drv_from_fd(int fd)
 	/* get the kernel module name */
 	version = drmGetVersion(fd);
 	if (!version) {
-		LOGE("invalid DRM fd");
+		ALOGE("invalid DRM fd");
 		return NULL;
 	}
 
@@ -87,7 +87,7 @@ init_drv_from_fd(int fd)
 	}
 
 	if (!drv) {
-		LOGE("unsupported driver: %s", (version->name) ?
+		ALOGE("unsupported driver: %s", (version->name) ?
 				version->name : "NULL");
 	}
 
@@ -110,7 +110,7 @@ struct gralloc_drm_t *gralloc_drm_create(void)
 
 	drm->fd = open(GRALLOC_DRM_DEVICE, O_RDWR);
 	if (drm->fd < 0) {
-		LOGE("failed to open %s", GRALLOC_DRM_DEVICE);
+		ALOGE("failed to open %s", GRALLOC_DRM_DEVICE);
 		return NULL;
 	}
 
@@ -164,7 +164,7 @@ int gralloc_drm_auth_magic(struct gralloc_drm_t *drm, int32_t magic)
  */
 int gralloc_drm_set_master(struct gralloc_drm_t *drm)
 {
-	LOGD("set master");
+	ALOGD("set master");
 	drmSetMaster(drm->fd);
 	drm->first_post = 1;
 

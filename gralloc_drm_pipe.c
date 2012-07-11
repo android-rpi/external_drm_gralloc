@@ -122,13 +122,13 @@ static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 	if (templ.format == PIPE_FORMAT_NONE ||
 	    !pm->screen->is_format_supported(pm->screen, templ.format,
 				templ.target, 0, templ.bind)) {
-		LOGE("unsupported format 0x%x", handle->format);
+		ALOGE("unsupported format 0x%x", handle->format);
 		return NULL;
 	}
 
 	buf = CALLOC(1, sizeof(*buf));
 	if (!buf) {
-		LOGE("failed to allocate pipe buffer");
+		ALOGE("failed to allocate pipe buffer");
 		return NULL;
 	}
 
@@ -175,7 +175,7 @@ static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 	return buf;
 
 fail:
-	LOGE("failed to allocate pipe buffer");
+	ALOGE("failed to allocate pipe buffer");
 	if (buf->resource)
 		pipe_resource_reference(&buf->resource, NULL);
 	FREE(buf);
@@ -233,7 +233,7 @@ static int pipe_map(struct gralloc_drm_drv_t *drv,
 	if (!pm->context) {
 		pm->context = pm->screen->context_create(pm->screen, NULL);
 		if (!pm->context) {
-			LOGE("failed to create pipe context");
+			ALOGE("failed to create pipe context");
 			err = -ENOMEM;
 		}
 	}
@@ -298,7 +298,7 @@ static void pipe_copy(struct gralloc_drm_drv_t *drv,
 	    dst_bo->handle->height != src_bo->handle->height ||
 	    dst_bo->handle->stride != src_bo->handle->stride ||
 	    dst_bo->handle->format != src_bo->handle->format) {
-		LOGE("copy between incompatible buffers");
+		ALOGE("copy between incompatible buffers");
 		return;
 	}
 
@@ -322,7 +322,7 @@ static void pipe_copy(struct gralloc_drm_drv_t *drv,
 	if (!pm->context) {
 		pm->context = pm->screen->context_create(pm->screen, NULL);
 		if (!pm->context) {
-			LOGE("failed to create pipe context");
+			ALOGE("failed to create pipe context");
 			pthread_mutex_unlock(&pm->mutex);
 			return;
 		}
@@ -431,7 +431,7 @@ static int pipe_init_screen(struct pipe_manager *pm)
 #endif
 
 	if (!screen) {
-		LOGW("failed to create screen for %s", pm->driver);
+		ALOGW("failed to create screen for %s", pm->driver);
 		return -EINVAL;
 	}
 
@@ -538,7 +538,7 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_pipe(int fd, const char *na
 
 	pm = CALLOC(1, sizeof(*pm));
 	if (!pm) {
-		LOGE("failed to allocate pipe manager for %s", name);
+		ALOGE("failed to allocate pipe manager for %s", name);
 		return NULL;
 	}
 

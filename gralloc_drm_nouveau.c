@@ -164,7 +164,7 @@ static struct nouveau_bo *alloc_bo(struct nouveau_info *info,
 
 	if (nouveau_bo_new_tile(info->dev, flags, 0, *pitch * height,
 				tile_mode, tile_flags, &bo)) {
-		LOGE("failed to allocate bo (flags 0x%x, size %d, tile_mode 0x%x, tile_flags 0x%x)",
+		ALOGE("failed to allocate bo (flags 0x%x, size %d, tile_mode 0x%x, tile_flags 0x%x)",
 				flags, *pitch * height, tile_mode, tile_flags);
 		bo = NULL;
 	}
@@ -181,7 +181,7 @@ nouveau_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t *handle
 
 	cpp = gralloc_drm_get_bpp(handle->format);
 	if (!cpp) {
-		LOGE("unrecognized format 0x%x", handle->format);
+		ALOGE("unrecognized format 0x%x", handle->format);
 		return NULL;
 	}
 
@@ -191,7 +191,7 @@ nouveau_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t *handle
 
 	if (handle->name) {
 		if (nouveau_bo_handle_ref(info->dev, handle->name, &nb->bo)) {
-			LOGE("failed to create nouveau bo from name %u",
+			ALOGE("failed to create nouveau bo from name %u",
 					handle->name);
 			free(nb);
 			return NULL;
@@ -207,7 +207,7 @@ nouveau_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t *handle
 		nb->bo = alloc_bo(info, width, height,
 				cpp, handle->usage, &pitch);
 		if (!nb->bo) {
-			LOGE("failed to allocate nouveau bo %dx%dx%d",
+			ALOGE("failed to allocate nouveau bo %dx%dx%d",
 					handle->width, handle->height, cpp);
 			free(nb);
 			return NULL;
@@ -215,7 +215,7 @@ nouveau_alloc(struct gralloc_drm_drv_t *drv, struct gralloc_drm_handle_t *handle
 
 		if (nouveau_bo_handle_get(nb->bo,
 					(uint32_t *) &handle->name)) {
-			LOGE("failed to flink nouveau bo");
+			ALOGE("failed to flink nouveau bo");
 			nouveau_bo_ref(NULL, &nb->bo);
 			free(nb);
 			return NULL;
@@ -330,7 +330,7 @@ static int nouveau_init(struct nouveau_info *info)
 		info->arch = 0xc0;
 		break;
 	default:
-		LOGE("unknown nouveau chipset 0x%x", info->dev->chipset);
+		ALOGE("unknown nouveau chipset 0x%x", info->dev->chipset);
 		err = -EINVAL;
 		break;
 	}
@@ -352,7 +352,7 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_nouveau(int fd)
 	info->fd = fd;
 	err = nouveau_device_open_existing(&info->dev, 0, info->fd, 0);
 	if (err) {
-		LOGE("failed to create nouveau device");
+		ALOGE("failed to create nouveau device");
 		free(info);
 		return NULL;
 	}
@@ -361,7 +361,7 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_nouveau(int fd)
 			24 * 1024, &info->chan);
 	if (err) {
 		/* make it non-fatal temporarily as it may require firmwares */
-		LOGW("failed to create nouveau channel");
+		ALOGW("failed to create nouveau channel");
 		info->chan = NULL;
 	}
 
