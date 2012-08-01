@@ -113,7 +113,7 @@ int gralloc_drm_handle_register(buffer_handle_t handle, struct gralloc_drm_t *dr
 int gralloc_drm_handle_unregister(buffer_handle_t handle);
 
 struct gralloc_drm_bo_t *gralloc_drm_bo_create(struct gralloc_drm_t *drm, int width, int height, int format, int usage);
-void gralloc_drm_bo_destroy(struct gralloc_drm_bo_t *bo);
+void gralloc_drm_bo_decref(struct gralloc_drm_bo_t *bo);
 
 struct gralloc_drm_bo_t *gralloc_drm_bo_from_handle(buffer_handle_t handle);
 buffer_handle_t gralloc_drm_bo_get_handle(struct gralloc_drm_bo_t *bo, int *stride);

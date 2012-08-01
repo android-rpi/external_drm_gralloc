@@ -384,7 +384,7 @@ static void drm_kms_init_features(struct gralloc_drm_t *drm)
 					      drm->fb_format,
 					      GRALLOC_USAGE_HW_FB);
 		if (front && gralloc_drm_bo_add_fb(front)) {
-			gralloc_drm_bo_destroy(front);
+			gralloc_drm_bo_decref(front);
 			front = NULL;
 		}
 
@@ -605,7 +605,7 @@ void gralloc_drm_fini_kms(struct gralloc_drm_t *drm)
 				&drm->current_front : &drm->next_front;
 
 			if (*bo)
-				gralloc_drm_bo_destroy(*bo);
+				gralloc_drm_bo_decref(*bo);
 			*bo = NULL;
 		}
 		break;

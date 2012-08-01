@@ -110,6 +110,8 @@ struct gralloc_drm_bo_t {
 
 	int lock_count;
 	int locked_for;
+
+	unsigned int refcount;
 };
 
 struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_pipe(int fd, const char *name);

@@ -174,9 +174,7 @@ static int drm_mod_free_gpu0(alloc_device_t *dev, buffer_handle_t handle)
 	if (!bo)
 		return -EINVAL;
 
-	if (gralloc_drm_bo_need_fb(bo))
-		gralloc_drm_bo_rm_fb(bo);
-	gralloc_drm_bo_destroy(bo);
+	gralloc_drm_bo_decref(bo);
 
 	return 0;
 }
@@ -201,7 +199,7 @@ static int drm_mod_alloc_gpu0(alloc_device_t *dev,
 		err = gralloc_drm_bo_add_fb(bo);
 		if (err) {
 			ALOGE("failed to add fb");
-			gralloc_drm_bo_destroy(bo);
+			gralloc_drm_bo_decref(bo);
 			return err;
 		}
 	}

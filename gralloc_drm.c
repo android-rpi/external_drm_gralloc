@@ -236,7 +236,7 @@ int gralloc_drm_handle_unregister(buffer_handle_t handle)
 		return -EINVAL;
 
 	if (bo->imported)
-		gralloc_drm_bo_destroy(bo);
+		gralloc_drm_bo_decref(bo);
 
 	return 0;
 }
@@ -288,6 +288,8 @@ struct gralloc_drm_bo_t *gralloc_drm_bo_create(struct gralloc_drm_t *drm,
 	bo->drm = drm;
 	bo->imported = 0;
 	bo->handle = handle;
+	bo->fb_id = 0;
+	bo->refcount = 1;
 
 	handle->data_owner = gralloc_drm_get_pid();
 	handle->data = (int) bo;
@@ -298,10 +300,16 @@ struct gralloc_drm_bo_t *gralloc_drm_bo_create(struct gralloc_drm_t *drm,
 /*
  * Destroy a bo.
  */
-void gralloc_drm_bo_destroy(struct gralloc_drm_bo_t *bo)
+static void gralloc_drm_bo_destroy(struct gralloc_drm_bo_t *bo)
 {
 	struct gralloc_drm_handle_t *handle = bo->handle;
 	int imported = bo->imported;
+
+	/* gralloc still has a reference */
+	if (bo->refcount)
+		return;
+
+	gralloc_drm_bo_rm_fb(bo);
 
 	bo->drm->drv->free(bo->drm->drv, bo);
 	if (imported) {
@@ -311,6 +319,15 @@ void gralloc_drm_bo_destroy(struct gralloc_drm_bo_t *bo)
 	else {
 		free(handle);
 	}
+}
+
+/*
+ * Decrease refcount, if no refs anymore then destroy.
+ */
+void gralloc_drm_bo_decref(struct gralloc_drm_bo_t *bo)
+{
+	if (!--bo->refcount)
+		gralloc_drm_bo_destroy(bo);
 }
 
 /*
