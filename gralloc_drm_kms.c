@@ -563,6 +563,32 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 		return -EINVAL;
 	}
 
+	drm->plane_resources = drmModeGetPlaneResources(drm->fd);
+	if (!drm->plane_resources) {
+		ALOGD("no planes found from drm resources");
+	} else {
+		ALOGD("supported drm planes and formats");
+		/* fill a helper structure for hwcomposer */
+		drm->planes = calloc(drm->plane_resources->count_planes,
+			sizeof(struct gralloc_drm_plane_t));
+
+		for (i = 0; i < drm->plane_resources->count_planes; i++) {
+
+			unsigned int j;
+
+			drm->planes[i].drm_plane = drmModeGetPlane(drm->fd,
+				drm->plane_resources->planes[i]);
+
+			ALOGD("plane id %d", drm->planes[i].drm_plane->plane_id);
+			for (j = 0; j < drm->planes[i].drm_plane->count_formats; j++)
+				ALOGD("    format %c%c%c%c",
+					(drm->planes[i].drm_plane->formats[j]),
+					(drm->planes[i].drm_plane->formats[j])>>8,
+					(drm->planes[i].drm_plane->formats[j])>>16,
+					(drm->planes[i].drm_plane->formats[j])>>24);
+		}
+	}
+
 	/* find the crtc/connector/mode to use */
 	for (i = 0; i < drm->resources->count_connectors; i++) {
 		drmModeConnectorPtr connector;
@@ -618,6 +644,19 @@ void gralloc_drm_fini_kms(struct gralloc_drm_t *drm)
 	if (drm->resources) {
 		drmModeFreeResources(drm->resources);
 		drm->resources = NULL;
+	}
+
+	if (drm->planes) {
+		unsigned int i;
+		for (i = 0; i < drm->plane_resources->count_planes; i++)
+			drmModeFreePlane(drm->planes[i].drm_plane);
+		free(drm->planes);
+		drm->planes = NULL;
+	}
+
+	if (drm->plane_resources) {
+		drmModeFreePlaneResources(drm->plane_resources);
+		drm->plane_resources = NULL;
 	}
 
 	drm_singleton = NULL;

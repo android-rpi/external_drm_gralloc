@@ -37,6 +37,10 @@ enum drm_swap_mode {
 	DRM_SWAP_SETCRTC,
 };
 
+struct gralloc_drm_plane_t {
+	drmModePlane *drm_plane;
+};
+
 struct gralloc_drm_t {
 	/* initialized by gralloc_drm_create */
 	int fd;
@@ -66,6 +70,10 @@ struct gralloc_drm_t {
 	struct gralloc_drm_bo_t *current_front, *next_front;
 	int waiting_flip;
 	unsigned int last_swap;
+
+	/* plane support */
+	drmModePlaneResPtr plane_resources;
+	struct gralloc_drm_plane_t *planes;
 };
 
 struct gralloc_drm_drv_t {
