@@ -442,8 +442,7 @@ static struct gralloc_drm_bo_t *intel_alloc(struct gralloc_drm_drv_t *drv,
 		}
 	}
 
-	if (handle->usage & GRALLOC_USAGE_HW_FB)
-		ib->base.fb_handle = ib->ibo->handle;
+	ib->base.fb_handle = ib->ibo->handle;
 
 	ib->base.handle = handle;
 
