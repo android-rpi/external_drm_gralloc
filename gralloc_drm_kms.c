@@ -44,6 +44,24 @@ int gralloc_drm_bo_need_fb(const struct gralloc_drm_bo_t *bo)
 		bo->drm->swap_mode != DRM_SWAP_COPY);
 }
 
+static unsigned int drm_format_from_hal(int hal_format)
+{
+	switch(hal_format) {
+		case HAL_PIXEL_FORMAT_RGB_888:
+		case HAL_PIXEL_FORMAT_RGBX_8888:
+		case HAL_PIXEL_FORMAT_BGRA_8888:
+			return DRM_FORMAT_XRGB8888;
+		case HAL_PIXEL_FORMAT_RGBA_8888:
+			return DRM_FORMAT_RGBA8888;
+		case HAL_PIXEL_FORMAT_RGB_565:
+			return DRM_FORMAT_RGB565;
+		case HAL_PIXEL_FORMAT_YV12:
+			return DRM_FORMAT_YUV420;
+		default:
+			return 0;
+	}
+}
+
 /*
  * Modify pitches, offsets and handles according to
  * the format and return corresponding drm format value
@@ -58,15 +76,10 @@ static int resolve_drm_format(struct gralloc_drm_bo_t *bo,
 	pitches[0] = bo->handle->stride;
 	handles[0] = bo->fb_handle;
 
+	int format = drm_format_from_hal(bo->handle->format);
+
+	// handle 'special formats'
 	switch(bo->handle->format) {
-		case HAL_PIXEL_FORMAT_RGB_888:
-		case HAL_PIXEL_FORMAT_RGBX_8888:
-		case HAL_PIXEL_FORMAT_BGRA_8888:
-			return DRM_FORMAT_ARGB8888;
-		case HAL_PIXEL_FORMAT_RGBA_8888:
-			return DRM_FORMAT_RGBA8888;
-		case HAL_PIXEL_FORMAT_RGB_565:
-			return DRM_FORMAT_RGB565;
 		case HAL_PIXEL_FORMAT_YV12:
 
 			// U and V stride are half of Y plane
@@ -80,12 +93,8 @@ static int resolve_drm_format(struct gralloc_drm_bo_t *bo,
 				pitches[2] * bo->handle->height/2;
 
 			handles[1] = handles[2] = handles[0];
-
-			return DRM_FORMAT_YUV420;
-		default:
-			return 0;
 	}
-	return 0;
+	return format;
 }
 
 /*
