@@ -80,6 +80,7 @@ LOCAL_SHARED_LIBRARIES := \
 	libdrm \
 	liblog \
 	libcutils \
+	libhardware_legacy \
 
 # for glFlush/glFinish
 LOCAL_SHARED_LIBRARIES += \
