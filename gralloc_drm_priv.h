@@ -37,24 +37,8 @@ enum drm_swap_mode {
 	DRM_SWAP_SETCRTC,
 };
 
-enum hdmi_output_mode {
-	HDMI_CLONED,
-	HDMI_EXTENDED,
-};
-
 struct gralloc_drm_plane_t {
 	drmModePlane *drm_plane;
-};
-
-struct gralloc_drm_output
-{
-	uint32_t crtc_id;
-	uint32_t connector_id;
-	drmModeModeInfo mode;
-	int xdpi, ydpi;
-	int fb_format;
-	int bpp;
-	uint32_t active;
 };
 
 struct gralloc_drm_t {
@@ -64,19 +48,16 @@ struct gralloc_drm_t {
 
 	/* initialized by gralloc_drm_init_kms */
 	drmModeResPtr resources;
-	struct gralloc_drm_output primary;
-	struct gralloc_drm_output hdmi;
-	enum hdmi_output_mode hdmi_mode;
-
-	/* hdmi hotplug */
-	pthread_mutex_t hdmi_mutex;
-	pthread_t hdmi_hotplug_thread;
-
+	uint32_t crtc_id;
+	uint32_t connector_id;
+	drmModeModeInfo mode;
+	int xdpi, ydpi;
 #ifdef DRM_MODE_FEATURE_DIRTYFB
 	drmModeClip clip;
 #endif
 
 	/* initialized by drv->init_kms_features */
+	int fb_format;
 	enum drm_swap_mode swap_mode;
 	int swap_interval;
 	int mode_quirk_vmwgfx;

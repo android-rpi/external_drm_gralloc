@@ -497,12 +497,12 @@ static void intel_init_kms_features(struct gralloc_drm_drv_t *drv,
 	struct drm_i915_getparam gp;
 	int pageflipping, id;
 
-	switch (drm->primary.fb_format) {
+	switch (drm->fb_format) {
 	case HAL_PIXEL_FORMAT_BGRA_8888:
 	case HAL_PIXEL_FORMAT_RGB_565:
 		break;
 	default:
-		drm->primary.fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
+		drm->fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
 		break;
 	}
 
@@ -545,7 +545,7 @@ static void intel_init_kms_features(struct gralloc_drm_drv_t *drv,
 		int pipe;
 
 		pipe = drm_intel_get_pipe_from_crtc_id(info->bufmgr,
-				drm->primary.crtc_id);
+				drm->crtc_id);
 		drm->swap_interval = (pipe >= 0) ? 1 : 0;
 		drm->vblank_secondary = (pipe > 0);
 	}
