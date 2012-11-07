@@ -211,7 +211,8 @@ static int drm_kms_page_flip(struct gralloc_drm_t *drm,
 		ALOGE("failed to perform page flip for primary (%s) (crtc %d fb %d))",
 			strerror(errno), drm->primary.crtc_id, bo->fb_id);
 		/* try to set mode for next frame */
-		drm->first_post = 1;
+		if (errno != EBUSY)
+			drm->first_post = 1;
 	}
 	else
 		drm->next_front = bo;
@@ -773,6 +774,12 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 	/* check if hdmi is connected already */
 	hdmi = fetch_connector(drm, DRM_MODE_CONNECTOR_HDMIA);
 	if (hdmi) {
+
+		if (hdmi->connector_id == drm->primary.connector_id) {
+			/* special case: our primary connector is hdmi */
+			goto skip_hdmi_modes;
+		}
+
 		drm_kms_init_with_connector(drm, &drm->hdmi, hdmi);
 		drmModeFreeConnector(hdmi);
 
@@ -787,6 +794,8 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 	/* launch hdmi observer thread */
 	pthread_mutex_init(&drm->hdmi_mutex, NULL);
 	pthread_create(&drm->hdmi_hotplug_thread, NULL, hdmi_observer, drm);
+
+skip_hdmi_modes:
 
 	drm_kms_init_features(drm);
 	drm->first_post = 1;
