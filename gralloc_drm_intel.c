@@ -489,7 +489,7 @@ static void intel_unmap(struct gralloc_drm_drv_t *drv,
 		drm_intel_bo_unmap(ib->ibo);
 }
 
-#include "dri/intel_chipset.h" /* for IS_965() */
+#include "intel_chipset.h" /* for platform detection macros */
 static void intel_init_kms_features(struct gralloc_drm_drv_t *drv,
 		struct gralloc_drm_t *drm)
 {
@@ -522,8 +522,11 @@ static void intel_init_kms_features(struct gralloc_drm_drv_t *drv,
 	if (drmCommandWriteRead(drm->fd, DRM_I915_GETPARAM, &gp, sizeof(gp)))
 		id = 0;
 
-	if (IS_965(id)) {
-		if (IS_GEN6(id))
+	/* GEN4, G4X, GEN5, GEN6, GEN7 */
+	if ((IS_9XX(id) || IS_G4X(id)) && !IS_GEN3(id)) {
+		if (IS_GEN7(id))
+			info->gen = 70;
+		else if (IS_GEN6(id))
 			info->gen = 60;
 		else if (IS_GEN5(id))
 			info->gen = 50;
