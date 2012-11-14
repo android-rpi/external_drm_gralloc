@@ -53,22 +53,35 @@ ifneq ($(strip $(DRM_GPU_DRIVERS)),)
 
 LOCAL_PATH := $(call my-dir)
 
+
+# Use the PREBUILT libraries
+ifeq ($(strip $(DRM_GPU_DRIVERS)),prebuilt)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := libgralloc_drm
+LOCAL_MODULE_TAGS := optional
+LOCAL_SRC_FILES := ../../$(BOARD_GPU_DRIVER_BINARY)
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+LOCAL_MODULE_SUFFIX := $(TARGET_SHLIB_SUFFIX)
+include $(BUILD_PREBUILT)
+
 include $(CLEAR_VARS)
 LOCAL_MODULE := gralloc.$(TARGET_PRODUCT)
 LOCAL_MODULE_TAGS := optional
-
-ifeq ($(strip $(DRM_GPU_DRIVERS)),prebuilt)
-
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw/
 LOCAL_SRC_FILES := ../../$(BOARD_GPU_DRIVER_BINARY)
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 LOCAL_MODULE_SUFFIX := $(TARGET_SHLIB_SUFFIX)
 include $(BUILD_PREBUILT)
 
+# Use the sources
 else
 
+include $(CLEAR_VARS)
+LOCAL_MODULE := libgralloc_drm
+LOCAL_MODULE_TAGS := optional
+
 LOCAL_SRC_FILES := \
-	gralloc.c \
 	gralloc_drm.c \
 	gralloc_drm_kms.c
 
@@ -81,10 +94,6 @@ LOCAL_SHARED_LIBRARIES := \
 	liblog \
 	libcutils \
 	libhardware_legacy \
-
-# for glFlush/glFinish
-LOCAL_SHARED_LIBRARIES += \
-	libGLESv1_CM
 
 ifneq ($(filter $(intel_drivers), $(DRM_GPU_DRIVERS)),)
 LOCAL_SRC_FILES += gralloc_drm_intel.c
@@ -135,9 +144,24 @@ LOCAL_STATIC_LIBRARIES += \
 	libmesa_gallium
 LOCAL_SHARED_LIBRARIES += libdl
 endif # DRM_USES_PIPE
+include $(BUILD_SHARED_LIBRARY)
 
-LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 
+include $(CLEAR_VARS)
+LOCAL_SRC_FILES := \
+	gralloc.c \
+
+LOCAL_SHARED_LIBRARIES := \
+	libgralloc_drm \
+	liblog \
+
+# for glFlush/glFinish
+LOCAL_SHARED_LIBRARIES += \
+	libGLESv1_CM
+
+LOCAL_MODULE := gralloc.$(TARGET_PRODUCT)
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw/
 include $(BUILD_SHARED_LIBRARY)
 
 endif # DRM_GPU_DRIVERS=prebuilt
