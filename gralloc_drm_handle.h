@@ -25,6 +25,7 @@
 #define _GRALLOC_DRM_HANDLE_H_
 
 #include <cutils/native_handle.h>
+#include "gralloc_drm_formats.h"
 
 struct gralloc_drm_handle_t {
 	native_handle_t base;
@@ -58,6 +59,24 @@ static inline struct gralloc_drm_handle_t *gralloc_drm_handle(buffer_handle_t _h
 		handle = NULL;
 
 	return handle;
+}
+
+static inline void gralloc_drm_yuv_offsets(buffer_handle_t _handle,
+	int *y, int *u, int *v)
+{
+	struct gralloc_drm_handle_t *handle = gralloc_drm_handle(_handle);
+	if (handle && *y && *u && *v) {
+		*y = 0;
+		switch (handle->format) {
+			case HAL_PIXEL_FORMAT_YV12:
+				*v = handle->stride * handle->height;
+				*u = *v + handle->height/2;
+				break;
+			case HAL_PIXEL_FORMAT_DRM_NV12:
+				*u = *v = handle->stride * handle->height;
+				break;
+		}
+	}
 }
 
 #endif /* _GRALLOC_DRM_HANDLE_H_ */
