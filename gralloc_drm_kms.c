@@ -59,6 +59,8 @@ static unsigned int drm_format_from_hal(int hal_format)
 			return DRM_FORMAT_RGB565;
 		case HAL_PIXEL_FORMAT_YV12:
 			return DRM_FORMAT_YUV420;
+		case HAL_PIXEL_FORMAT_DRM_NV12:
+			return DRM_FORMAT_NV12;
 		default:
 			return 0;
 	}
@@ -95,6 +97,16 @@ static int resolve_drm_format(struct gralloc_drm_bo_t *bo,
 				pitches[2] * bo->handle->height/2;
 
 			handles[1] = handles[2] = handles[0];
+			break;
+
+		case HAL_PIXEL_FORMAT_DRM_NV12:
+
+			// U and V are interleaved in 2nd plane
+			pitches[1] = pitches[0];
+			offsets[1] = offsets[0] +
+				pitches[0] * bo->handle->height;
+			handles[1] = handles[0];
+			break;
 	}
 	return format;
 }
