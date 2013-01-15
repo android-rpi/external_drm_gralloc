@@ -120,6 +120,7 @@ void gralloc_drm_bo_decref(struct gralloc_drm_bo_t *bo);
 
 struct gralloc_drm_bo_t *gralloc_drm_bo_from_handle(buffer_handle_t handle);
 buffer_handle_t gralloc_drm_bo_get_handle(struct gralloc_drm_bo_t *bo, int *stride);
+int gralloc_drm_get_gem_handle(buffer_handle_t handle);
 
 int gralloc_drm_bo_lock(struct gralloc_drm_bo_t *bo, int x, int y, int w, int h, int enable_write, void **addr);
 void gralloc_drm_bo_unlock(struct gralloc_drm_bo_t *bo);
