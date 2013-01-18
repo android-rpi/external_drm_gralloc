@@ -357,8 +357,13 @@ int gralloc_drm_bo_lock(struct gralloc_drm_bo_t *bo,
 {
 	if ((bo->handle->usage & usage) != usage) {
 		/* make FB special for testing software renderer with */
-		if (!(bo->handle->usage & GRALLOC_USAGE_HW_FB))
+
+		if (!(bo->handle->usage & GRALLOC_USAGE_HW_FB)
+		&&  !(bo->handle->usage & GRALLOC_USAGE_HW_TEXTURE)) {
+			ALOGE("bo.usage:x%X/usage:x%X is not GRALLOC_USAGE_HW_FB or GRALLOC_USAGE_HW_TEXTURE"
+				,bo->handle->usage,usage);
 			return -EINVAL;
+		}
 	}
 
 	/* allow multiple locks with compatible usages */
