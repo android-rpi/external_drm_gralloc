@@ -126,6 +126,11 @@ struct gralloc_drm_drv_t {
 		     struct gralloc_drm_bo_t *dst,
 		     struct gralloc_drm_bo_t *src,
 		     short x1, short y1, short x2, short y2);
+
+	/* query component offsets, strides and handles for a format */
+	void (*resolve_format)(struct gralloc_drm_drv_t *drv,
+		     struct gralloc_drm_bo_t *bo,
+		     uint32_t *pitches, uint32_t *offsets, uint32_t *handles);
 };
 
 struct gralloc_drm_bo_t {

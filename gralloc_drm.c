@@ -355,6 +355,22 @@ int gralloc_drm_get_gem_handle(buffer_handle_t _handle)
 }
 
 /*
+ * Query YUV component offsets for a buffer handle
+ */
+void gralloc_drm_resolve_format(buffer_handle_t _handle,
+	uint32_t *pitches, uint32_t *offsets, uint32_t *handles)
+{
+	struct gralloc_drm_handle_t *handle = gralloc_drm_handle(_handle);
+	struct gralloc_drm_bo_t *bo = (struct gralloc_drm_bo_t *) handle->data;
+	struct gralloc_drm_t *drm = bo->drm;
+
+	/* if handle exists and driver implements resolve_format */
+	if (handle && drm->drv->resolve_format)
+		drm->drv->resolve_format(drm->drv, bo,
+			pitches, offsets, handles);
+}
+
+/*
  * Lock a bo.  XXX thread-safety?
  */
 int gralloc_drm_bo_lock(struct gralloc_drm_bo_t *bo,

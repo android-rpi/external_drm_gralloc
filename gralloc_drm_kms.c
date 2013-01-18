@@ -73,42 +73,17 @@ static unsigned int drm_format_from_hal(int hal_format)
 static int resolve_drm_format(struct gralloc_drm_bo_t *bo,
 	uint32_t *pitches, uint32_t *offsets, uint32_t *handles)
 {
-	memset(pitches, 0, 4 * sizeof(uint32_t));
-	memset(offsets, 0, 4 * sizeof(uint32_t));
-	memset(handles, 0, 4 * sizeof(uint32_t));
+	struct gralloc_drm_t *drm = bo->drm;
 
 	pitches[0] = bo->handle->stride;
 	handles[0] = bo->fb_handle;
 
-	int format = drm_format_from_hal(bo->handle->format);
+	/* driver takes care of HW specific padding, alignment etc. */
+	if (drm->drv->resolve_format)
+		drm->drv->resolve_format(drm->drv, bo,
+			pitches, offsets, handles);
 
-	// handle 'special formats'
-	switch(bo->handle->format) {
-		case HAL_PIXEL_FORMAT_YV12:
-
-			// U and V stride are half of Y plane
-			pitches[2] = pitches[0]/2;
-			pitches[1] = pitches[0]/2;
-
-			// like I420 but U and V are in reverse order
-			offsets[2] = offsets[0] +
-				pitches[0] * bo->handle->height;
-			offsets[1] = offsets[2] +
-				pitches[2] * bo->handle->height/2;
-
-			handles[1] = handles[2] = handles[0];
-			break;
-
-		case HAL_PIXEL_FORMAT_DRM_NV12:
-
-			// U and V are interleaved in 2nd plane
-			pitches[1] = pitches[0];
-			offsets[1] = offsets[0] +
-				pitches[0] * bo->handle->height;
-			handles[1] = handles[0];
-			break;
-	}
-	return format;
+	return drm_format_from_hal(bo->handle->format);
 }
 
 /*
@@ -116,9 +91,9 @@ static int resolve_drm_format(struct gralloc_drm_bo_t *bo,
  */
 int gralloc_drm_bo_add_fb(struct gralloc_drm_bo_t *bo)
 {
-	uint32_t pitches[4];
-	uint32_t offsets[4];
-	uint32_t handles[4];
+	uint32_t pitches[4] = { 0, 0, 0, 0 };
+	uint32_t offsets[4] = { 0, 0, 0, 0 };
+	uint32_t handles[4] = { 0, 0, 0, 0 };
 
 	if (bo->fb_id)
 		return 0;
