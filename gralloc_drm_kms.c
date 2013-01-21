@@ -87,6 +87,29 @@ static int resolve_drm_format(struct gralloc_drm_bo_t *bo,
 }
 
 /*
+ * Returns planes that are supported for a particular format
+ */
+unsigned int planes_for_format(struct gralloc_drm_t *drm,
+	int hal_format)
+{
+	unsigned int i, j, mask = 0;
+	unsigned int drm_format = drm_format_from_hal(hal_format);
+	struct gralloc_drm_plane_t *plane = drm->planes;
+
+	/* no planes available */
+	if (!plane)
+		return 0;
+
+	/* iterate through planes, mark those that match format */
+	for (i=0; i<drm->plane_resources->count_planes; i++, plane++)
+		for (j=0; j<plane->drm_plane->count_formats; j++)
+			if (plane->drm_plane->formats[j] == drm_format)
+				mask |= (2 << plane->drm_plane->plane_id);
+
+	return mask;
+}
+
+/*
  * Add a fb object for a bo.
  */
 int gralloc_drm_bo_add_fb(struct gralloc_drm_bo_t *bo)

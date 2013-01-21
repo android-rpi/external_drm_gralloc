@@ -262,6 +262,7 @@ static struct gralloc_drm_handle_t *create_bo_handle(int width,
 	handle->height = height;
 	handle->format = format;
 	handle->usage = usage;
+	handle->plane_mask = 0;
 
 	return handle;
 }
@@ -278,6 +279,8 @@ struct gralloc_drm_bo_t *gralloc_drm_bo_create(struct gralloc_drm_t *drm,
 	handle = create_bo_handle(width, height, format, usage);
 	if (!handle)
 		return NULL;
+
+	handle->plane_mask = planes_for_format(drm, format);
 
 	bo = drm->drv->alloc(drm->drv, handle);
 	if (!bo) {

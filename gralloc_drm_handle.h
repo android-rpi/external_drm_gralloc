@@ -31,7 +31,7 @@ struct gralloc_drm_handle_t {
 	native_handle_t base;
 
 #define GRALLOC_DRM_HANDLE_MAGIC 0x12345678
-#define GRALLOC_DRM_HANDLE_NUM_INTS 9
+#define GRALLOC_DRM_HANDLE_NUM_INTS 10
 #define GRALLOC_DRM_HANDLE_NUM_FDS 0
 	int magic;
 
@@ -39,6 +39,8 @@ struct gralloc_drm_handle_t {
 	int height;
 	int format;
 	int usage;
+
+	unsigned int plane_mask; /* planes that support handle */
 
 	int name;   /* the name of the bo */
 	int stride; /* the stride in bytes */
