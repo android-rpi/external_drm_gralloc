@@ -151,6 +151,10 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := \
 	gralloc.c \
 
+LOCAL_C_INCLUDES := \
+	external/drm \
+	external/drm/include/drm \
+
 LOCAL_SHARED_LIBRARIES := \
 	libgralloc_drm \
 	liblog \

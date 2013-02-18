@@ -96,6 +96,13 @@ struct gralloc_drm_t {
 	struct gralloc_drm_plane_t *planes;
 };
 
+struct drm_module_t {
+	gralloc_module_t base;
+
+	pthread_mutex_t mutex;
+	struct gralloc_drm_t *drm;
+};
+
 struct gralloc_drm_drv_t {
 	/* destroy the driver */
 	void (*destroy)(struct gralloc_drm_drv_t *drv);
