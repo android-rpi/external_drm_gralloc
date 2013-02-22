@@ -128,11 +128,14 @@ struct gralloc_drm_drv_t {
 	void (*unmap)(struct gralloc_drm_drv_t *drv,
 		      struct gralloc_drm_bo_t *bo);
 
-	/* copy between two bo's, used for DRM_SWAP_COPY */
-	void (*copy)(struct gralloc_drm_drv_t *drv,
+	/* blit between two bo's, used for DRM_SWAP_COPY and general blitting */
+	void (*blit)(struct gralloc_drm_drv_t *drv,
 		     struct gralloc_drm_bo_t *dst,
 		     struct gralloc_drm_bo_t *src,
-		     short x1, short y1, short x2, short y2);
+		     uint16_t dst_x1, uint16_t dst_y1,
+		     uint16_t dst_x2, uint16_t dst_y2,
+		     uint16_t src_x1, uint16_t src_y1,
+		     uint16_t src_x2, uint16_t src_y2);
 
 	/* query component offsets, strides and handles for a format */
 	void (*resolve_format)(struct gralloc_drm_drv_t *drv,

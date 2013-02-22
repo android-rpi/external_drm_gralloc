@@ -130,7 +130,8 @@ batch_flush(struct intel_info *info)
 		ALOGE("failed to subdata batch");
 		goto fail;
 	}
-	ret = drm_intel_bo_exec(info->batch_ibo, size, NULL, 0, 0);
+	ret = drm_intel_bo_mrb_exec(info->batch_ibo, size,
+		NULL, 0, 0, I915_EXEC_BLT);
 	if (ret) {
 		ALOGE("failed to exec batch");
 		goto fail;
@@ -236,10 +237,14 @@ static void intel_resolve_format(struct gralloc_drm_drv_t *drv,
 	}
 }
 
-static void intel_copy(struct gralloc_drm_drv_t *drv,
+
+static void intel_blit(struct gralloc_drm_drv_t *drv,
 		struct gralloc_drm_bo_t *dst,
 		struct gralloc_drm_bo_t *src,
-		short x1, short y1, short x2, short y2)
+		uint16_t dst_x1, uint16_t dst_y1,
+		uint16_t dst_x2, uint16_t dst_y2,
+		uint16_t src_x1, uint16_t src_y1,
+		uint16_t src_x2, uint16_t src_y2)
 {
 	struct intel_info *info = (struct intel_info *) drv;
 	struct intel_buffer *dst_ib = (struct intel_buffer *) dst;
@@ -247,25 +252,35 @@ static void intel_copy(struct gralloc_drm_drv_t *drv,
 	drm_intel_bo *bo_table[3];
 	uint32_t cmd, br13, dst_pitch, src_pitch;
 
-	if (dst->handle->width != src->handle->width ||
-	    dst->handle->height != src->handle->height ||
-	    dst->handle->stride != src->handle->stride ||
-	    dst->handle->format != src->handle->format) {
-		ALOGE("copy between incompatible buffers");
+	/*
+	 * XY_SRC_COPY_BLT_CMD does not support scaling,
+	 * rectangle dimensions much match
+	 */
+	if (src_x2 - src_x1 != dst_x2 - dst_x1 ||
+		src_y2 - src_y1 != dst_y2 - dst_y1) {
+		ALOGE("%s, src and dst rect must match", __func__);
 		return;
 	}
 
-	if (x1 < 0)
-		x1 = 0;
-	if (y1 < 0)
-		y1 = 0;
-	if (x2 > dst->handle->width)
-		x2 = dst->handle->width;
-	if (y2 > dst->handle->height)
-		y2 = dst->handle->height;
-
-	if (x2 <= x1 || y2 <= y1)
+	if (dst->handle->format != src->handle->format) {
+		ALOGE("%s, src and dst format must match", __func__);
 		return;
+	}
+
+	/* nothing to blit */
+	if (src_x2 <= src_x1 || src_y2 <= src_y1)
+		return;
+
+	/* clamp x2, y2 to surface size */
+	if (src_x2 > src->handle->width)
+		src_x2 = src->handle->width;
+	if (src_y2 > src->handle->height)
+		src_y2 = src->handle->height;
+
+	if (dst_x2 > dst->handle->width)
+		dst_x2 = dst->handle->width;
+	if (dst_y2 > dst->handle->height)
+		dst_y2 = dst->handle->height;
 
 	bo_table[0] = info->batch_ibo;
 	bo_table[1] = src_ib->ibo;
@@ -281,6 +296,14 @@ static void intel_copy(struct gralloc_drm_drv_t *drv,
 	dst_pitch = dst->handle->stride;
 	src_pitch = src->handle->stride;
 
+	/* Blit pitch must be dword-aligned.  Otherwise, the hardware appears to
+	 * drop the low bits.
+	 */
+	if (src_pitch % 4 != 0 || dst_pitch % 4 != 0) {
+		ALOGE("%s, src and dst pitch must be dword aligned", __func__);
+		return;
+	}
+
 	switch (gralloc_drm_get_bpp(dst->handle->format)) {
 	case 1:
 		break;
@@ -292,7 +315,7 @@ static void intel_copy(struct gralloc_drm_drv_t *drv,
 		cmd |= XY_SRC_COPY_BLT_WRITE_ALPHA | XY_SRC_COPY_BLT_WRITE_RGB;
 		break;
 	default:
-		ALOGE("copy with unsupported format");
+		ALOGE("%s, copy with unsupported format", __func__);
 		return;
 	}
 
@@ -313,12 +336,12 @@ static void intel_copy(struct gralloc_drm_drv_t *drv,
 		return;
 
 	batch_dword(info, cmd);
-	batch_dword(info, br13 | dst_pitch);
-	batch_dword(info, (y1 << 16) | x1);
-	batch_dword(info, (y2 << 16) | x2);
+	batch_dword(info, br13 | (uint16_t)dst_pitch);
+	batch_dword(info, (dst_y1 << 16) | dst_x1);
+	batch_dword(info, (dst_y2 << 16) | dst_x2);
 	batch_reloc(info, dst, I915_GEM_DOMAIN_RENDER, I915_GEM_DOMAIN_RENDER);
-	batch_dword(info, (y1 << 16) | x1);
-	batch_dword(info, src_pitch);
+	batch_dword(info, (src_y1 << 16) | src_x1);
+	batch_dword(info, (uint16_t)src_pitch);
 	batch_reloc(info, src, I915_GEM_DOMAIN_RENDER, 0);
 
 	if (info->gen >= 60) {
@@ -638,7 +661,7 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_intel(int fd)
 	info->base.free = intel_free;
 	info->base.map = intel_map;
 	info->base.unmap = intel_unmap;
-	info->base.copy = intel_copy;
+	info->base.blit = intel_blit;
 	info->base.resolve_format = intel_resolve_format;
 
 	return &info->base;

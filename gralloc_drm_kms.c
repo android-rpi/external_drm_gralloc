@@ -309,7 +309,10 @@ int gralloc_drm_bo_post(struct gralloc_drm_bo_t *bo)
 			dst = (drm->next_front) ?
 				drm->next_front :
 				drm->current_front;
-			drm->drv->copy(drm->drv, dst, bo, 0, 0,
+			drm->drv->blit(drm->drv, dst, bo, 0, 0,
+					bo->handle->width,
+					bo->handle->height,
+					0, 0,
 					bo->handle->width,
 					bo->handle->height);
 			bo = dst;
@@ -349,8 +352,11 @@ int gralloc_drm_bo_post(struct gralloc_drm_bo_t *bo)
 		break;
 	case DRM_SWAP_COPY:
 		drm_kms_wait_for_post(drm, 0);
-		drm->drv->copy(drm->drv, drm->current_front,
+		drm->drv->blit(drm->drv, drm->current_front,
 				bo, 0, 0,
+				bo->handle->width,
+				bo->handle->height,
+				0, 0,
 				bo->handle->width,
 				bo->handle->height);
 		if (drm->mode_quirk_vmwgfx)

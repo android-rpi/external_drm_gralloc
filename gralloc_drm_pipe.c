@@ -285,10 +285,13 @@ static void pipe_unmap(struct gralloc_drm_drv_t *drv,
 	pthread_mutex_unlock(&pm->mutex);
 }
 
-static void pipe_copy(struct gralloc_drm_drv_t *drv,
+static void pipe_blit(struct gralloc_drm_drv_t *drv,
 		struct gralloc_drm_bo_t *dst_bo,
 		struct gralloc_drm_bo_t *src_bo,
-		short x1, short y1, short x2, short y2)
+		uint16_t dst_x1, uint16_t dst_y1,
+		uint16_t dst_x2, uint16_t dst_y2,
+		uint16_t src_x1, uint16_t src_y1,
+		uint16_t src_x2, uint16_t src_y2)
 {
 	struct pipe_manager *pm = (struct pipe_manager *) drv;
 	struct pipe_buffer *dst = (struct pipe_buffer *) dst_bo;
@@ -303,19 +306,15 @@ static void pipe_copy(struct gralloc_drm_drv_t *drv,
 		return;
 	}
 
-	if (x1 < 0)
-		x1 = 0;
-	if (y1 < 0)
-		y1 = 0;
-	if (x2 > dst_bo->handle->width)
-		x2 = dst_bo->handle->width;
-	if (y2 > dst_bo->handle->height)
-		y2 = dst_bo->handle->height;
+	if (dst_x2 > dst_bo->handle->width)
+		dst_x2 = dst_bo->handle->width;
+	if (dst_y2 > dst_bo->handle->height)
+		dst_y2 = dst_bo->handle->height;
 
-	if (x2 <= x1 || y2 <= y1)
+	if (src_x2 <= src_x1 || src_y2 <= src_y1)
 		return;
 
-	u_box_2d(x1, y1, x2 - x1, y2 - y1, &src_box);
+	u_box_2d(src_x1, src_y1, src_x2 - src_x1, src_y2 - src_y1, &src_box);
 
 	pthread_mutex_lock(&pm->mutex);
 
@@ -330,7 +329,7 @@ static void pipe_copy(struct gralloc_drm_drv_t *drv,
 	}
 
 	pm->context->resource_copy_region(pm->context,
-			dst->resource, 0, x1, y1, 0,
+			dst->resource, 0, dst_x1, dst_y1, 0,
 			src->resource, 0, &src_box);
 	pm->context->flush(pm->context, NULL);
 
@@ -562,7 +561,7 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_pipe(int fd, const char *na
 	pm->base.free = pipe_free;
 	pm->base.map = pipe_map;
 	pm->base.unmap = pipe_unmap;
-	pm->base.copy = pipe_copy;
+	pm->base.blit = pipe_blit;
 
 	return &pm->base;
 }
