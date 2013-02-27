@@ -56,6 +56,9 @@ struct gralloc_drm_output
 	int fb_format;
 	int bpp;
 	uint32_t active;
+
+	/* 'private fb' for this output */
+	struct gralloc_drm_bo_t *bo;
 };
 
 struct gralloc_drm_t {
