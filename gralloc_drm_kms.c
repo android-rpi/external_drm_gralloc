@@ -1049,6 +1049,7 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 		drmModeFreeConnector(hdmi);
 	}
 
+goto skip_hdmi_modes;
 	/* launch hdmi observer thread */
 	pthread_mutex_init(&drm->hdmi_mutex, NULL);
 	pthread_create(&drm->hdmi_hotplug_thread, NULL, hdmi_observer, drm);
