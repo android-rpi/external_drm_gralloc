@@ -120,6 +120,7 @@ ifeq ($(strip $(DRM_USES_PIPE)),true)
 LOCAL_SRC_FILES += gralloc_drm_pipe.c
 LOCAL_CFLAGS += -DENABLE_PIPE
 LOCAL_C_INCLUDES += \
+	external/mesa/include \
 	external/mesa/src/gallium/include \
 	external/mesa/src/gallium/winsys \
 	external/mesa/src/gallium/drivers \
@@ -129,7 +130,7 @@ ifneq ($(filter r600g, $(DRM_GPU_DRIVERS)),)
 LOCAL_CFLAGS += -DENABLE_PIPE_R600
 LOCAL_STATIC_LIBRARIES += \
 	libmesa_pipe_r600 \
-	libmesa_winsys_r600
+	libmesa_winsys_radeon
 endif
 ifneq ($(filter vmwgfx, $(DRM_GPU_DRIVERS)),)
 LOCAL_CFLAGS += -DENABLE_PIPE_VMWGFX

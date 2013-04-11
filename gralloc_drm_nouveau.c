@@ -273,12 +273,12 @@ static void nouveau_init_kms_features(struct gralloc_drm_drv_t *drv,
 {
 	struct nouveau_info *info = (struct nouveau_info *) drv;
 
-	switch (drm->fb_format) {
+	switch (drm->primary.fb_format) {
 	case HAL_PIXEL_FORMAT_BGRA_8888:
 	case HAL_PIXEL_FORMAT_RGB_565:
 		break;
 	default:
-		drm->fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
+		drm->primary.fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
 		break;
 	}
 

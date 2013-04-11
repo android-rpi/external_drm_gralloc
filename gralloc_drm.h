@@ -27,6 +27,10 @@
 #include <hardware/gralloc.h>
 #include "gralloc_drm_formats.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct gralloc_drm_t;
 struct gralloc_drm_bo_t;
 
@@ -132,4 +136,7 @@ int gralloc_drm_bo_add_fb(struct gralloc_drm_bo_t *bo);
 void gralloc_drm_bo_rm_fb(struct gralloc_drm_bo_t *bo);
 int gralloc_drm_bo_post(struct gralloc_drm_bo_t *bo);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _GRALLOC_DRM_H_ */

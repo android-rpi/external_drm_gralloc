@@ -212,7 +212,7 @@ static void pipe_free(struct gralloc_drm_drv_t *drv, struct gralloc_drm_bo_t *bo
 	pthread_mutex_lock(&pm->mutex);
 
 	if (buf->transfer)
-		pipe_transfer_destroy(pm->context, buf->transfer);
+		pipe_transfer_unmap(pm->context, buf->transfer);
 	pipe_resource_reference(&buf->resource, NULL);
 
 	pthread_mutex_unlock(&pm->mutex);
@@ -252,12 +252,11 @@ static int pipe_map(struct gralloc_drm_drv_t *drv,
 		 * ignore x, y, w and h so that returned addr points at the
 		 * start of the buffer
 		 */
-		buf->transfer = pipe_get_transfer(pm->context, buf->resource,
-				0, 0, usage, 0, 0,
-				buf->resource->width0, buf->resource->height0);
-		if (buf->transfer)
-			*addr = pipe_transfer_map(pm->context, buf->transfer);
-		else
+		*addr = pipe_transfer_map(pm->context, buf->resource,
+					  0, 0, usage, 0, 0,
+					  buf->resource->width0, buf->resource->height0,
+					  &buf->transfer);
+		if (*addr == NULL)
 			err = -ENOMEM;
 	}
 
@@ -277,10 +276,9 @@ static void pipe_unmap(struct gralloc_drm_drv_t *drv,
 	assert(buf && buf->transfer);
 
 	pipe_transfer_unmap(pm->context, buf->transfer);
-	pipe_transfer_destroy(pm->context, buf->transfer);
 	buf->transfer = NULL;
 
-	pm->context->flush(pm->context, NULL);
+	pm->context->flush(pm->context, NULL, 0);
 
 	pthread_mutex_unlock(&pm->mutex);
 }
@@ -331,7 +329,7 @@ static void pipe_blit(struct gralloc_drm_drv_t *drv,
 	pm->context->resource_copy_region(pm->context,
 			dst->resource, 0, dst_x1, dst_y1, 0,
 			src->resource, 0, &src_box);
-	pm->context->flush(pm->context, NULL);
+	pm->context->flush(pm->context, NULL, 0);
 
 	pthread_mutex_unlock(&pm->mutex);
 }
@@ -340,12 +338,12 @@ static void pipe_init_kms_features(struct gralloc_drm_drv_t *drv, struct gralloc
 {
 	struct pipe_manager *pm = (struct pipe_manager *) drv;
 
-	switch (drm->fb_format) {
+	switch (drm->primary.fb_format) {
 	case HAL_PIXEL_FORMAT_BGRA_8888:
 	case HAL_PIXEL_FORMAT_RGB_565:
 		break;
 	default:
-		drm->fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
+		drm->primary.fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
 		break;
 	}
 
@@ -378,7 +376,7 @@ static void pipe_destroy(struct gralloc_drm_drv_t *drv)
 #include "radeon/drm/radeon_drm_public.h"
 #include "r300/r300_public.h"
 /* for r600 */
-#include "r600/drm/r600_drm_public.h"
+#include "radeon/drm/radeon_winsys.h"
 #include "r600/r600_public.h"
 /* for vmwgfx */
 #include "svga/drm/svga_drm_public.h"
@@ -408,12 +406,12 @@ static int pipe_init_screen(struct pipe_manager *pm)
 #endif
 #ifdef ENABLE_PIPE_R600
 	if (strcmp(pm->driver, "r600") == 0) {
-		struct radeon *rw = r600_drm_winsys_create(pm->fd);
+		struct radeon_winsys *sws = radeon_drm_winsys_create(pm->fd);
 
-		if (rw) {
-			screen = r600_screen_create(rw);
+		if (sws) {
+			screen = r600_screen_create(sws);
 			if (!screen)
-				FREE(rw);
+				sws->destroy(sws);
 		}
 	}
 #endif

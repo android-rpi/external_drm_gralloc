@@ -27,6 +27,10 @@
 #include <cutils/native_handle.h>
 #include "gralloc_drm_formats.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct gralloc_drm_handle_t {
 	native_handle_t base;
 
@@ -63,4 +67,7 @@ static inline struct gralloc_drm_handle_t *gralloc_drm_handle(buffer_handle_t _h
 	return handle;
 }
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _GRALLOC_DRM_HANDLE_H_ */

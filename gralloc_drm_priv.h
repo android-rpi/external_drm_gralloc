@@ -30,6 +30,10 @@
 
 #include "gralloc_drm_handle.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* how a bo is posted */
 enum drm_swap_mode {
 	DRM_SWAP_NOOP,
@@ -165,4 +169,7 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_intel(int fd);
 struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_radeon(int fd);
 struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_nouveau(int fd);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _GRALLOC_DRM_PRIV_H_ */
