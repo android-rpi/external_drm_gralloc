@@ -49,6 +49,25 @@ enum hdmi_output_mode {
 
 struct gralloc_drm_plane_t {
 	drmModePlane *drm_plane;
+
+	/* plane has been set to display a layer */
+	uint32_t active;
+
+	/* handle to display */
+	buffer_handle_t handle;
+
+	/* position, crop and scale */
+	uint32_t src_x;
+	uint32_t src_y;
+	uint32_t src_w;
+	uint32_t src_h;
+	uint32_t dst_x;
+	uint32_t dst_y;
+	uint32_t dst_w;
+	uint32_t dst_h;
+
+	/* previous buffer, for refcounting */
+	struct gralloc_drm_bo_t *prev;
 };
 
 struct gralloc_drm_output
@@ -105,6 +124,12 @@ struct gralloc_drm_t {
 
 struct drm_module_t {
 	gralloc_module_t base;
+
+	/* HWC plane API */
+	int (*hwc_reserve_plane) (struct gralloc_drm_t *mod, buffer_handle_t handle,
+		uint32_t dst_x, uint32_t dst_y, uint32_t dst_w, uint32_t dst_h,
+		uint32_t src_x, uint32_t src_y, uint32_t src_w, uint32_t src_h);
+	void (*hwc_disable_planes) (struct gralloc_drm_t *mod);
 
 	pthread_mutex_t mutex;
 	struct gralloc_drm_t *drm;

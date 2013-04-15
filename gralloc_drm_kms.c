@@ -104,7 +104,7 @@ unsigned int planes_for_format(struct gralloc_drm_t *drm,
 	for (i=0; i<drm->plane_resources->count_planes; i++, plane++)
 		for (j=0; j<plane->drm_plane->count_formats; j++)
 			if (plane->drm_plane->formats[j] == drm_format)
-				mask |= (2 << plane->drm_plane->plane_id);
+				mask |= (1U << plane->drm_plane->plane_id);
 
 	return mask;
 }
@@ -183,6 +183,152 @@ static void page_flip_handler(int fd, unsigned int sequence,
 }
 
 /*
+ * Set a plane.
+ */
+static int gralloc_drm_bo_setplane(struct gralloc_drm_t *drm,
+	struct gralloc_drm_plane_t *plane)
+{
+	struct gralloc_drm_bo_t *bo = NULL;
+	int err;
+
+	if (plane->handle)
+		bo = gralloc_drm_bo_from_handle(plane->handle);
+
+	// create a framebuffer if does not exist
+	if (bo && bo->fb_id == 0) {
+		err = gralloc_drm_bo_add_fb(bo);
+		if (err) {
+			ALOGE("%s: could not create drm fb, (%s)",
+				__func__, strerror(-err));
+			return err;
+		}
+	}
+
+	err = drmModeSetPlane(drm->fd,
+		plane->drm_plane->plane_id,
+		drm->primary.crtc_id,
+		bo ? bo->fb_id : 0,
+		0, // flags
+		plane->dst_x,
+		plane->dst_y,
+		plane->dst_w,
+		plane->dst_h,
+		plane->src_x << 16,
+		plane->src_y << 16,
+		plane->src_w << 16,
+		plane->src_h << 16);
+
+	if (err) {
+		/* clear plane_mask so that this buffer won't be tried again */
+		struct gralloc_drm_handle_t *drm_handle =
+			(struct gralloc_drm_handle_t *) plane->handle;
+		drm_handle->plane_mask = 0;
+
+		ALOGE("drmModeSetPlane : error (%s) (plane %d crtc %d fb %d)",
+			strerror(-err),
+			plane->drm_plane->plane_id,
+			drm->primary.crtc_id,
+			bo ? bo->fb_id : 0);
+	}
+
+	if (plane->prev)
+		gralloc_drm_bo_decref(plane->prev);
+
+	if (bo)
+		bo->refcount++;
+
+	plane->prev = bo;
+
+	return err;
+}
+
+/*
+ * Sets all the active planes to be displayed.
+ */
+static void gralloc_drm_set_planes(struct gralloc_drm_t *drm)
+{
+	struct gralloc_drm_plane_t *plane = drm->planes;
+	unsigned int i;
+	for (i = 0; i < drm->plane_resources->count_planes;
+		i++, plane++) {
+		/*
+		 * Disable overlay if it is not active
+		 * or if there is error during setplane
+		 */
+		if (!plane->active)
+			plane->handle = 0;
+
+		if (gralloc_drm_bo_setplane(drm, plane))
+			plane->active = 0;
+	}
+}
+
+/*
+ * Interface for HWC, used to reserve a plane for a layer.
+ */
+int gralloc_drm_reserve_plane(struct gralloc_drm_t *drm,
+	buffer_handle_t handle,
+	uint32_t dst_x,
+	uint32_t dst_y,
+	uint32_t dst_w,
+	uint32_t dst_h,
+	uint32_t src_x,
+	uint32_t src_y,
+	uint32_t src_w,
+	uint32_t src_h)
+{
+	unsigned int i, j;
+	struct gralloc_drm_handle_t *drm_handle =
+		gralloc_drm_handle(handle);
+	int plane_count = drm->plane_resources->count_planes;
+	struct gralloc_drm_plane_t *plane = drm->planes;
+
+	/* no supported planes for this handle */
+	if (!drm_handle->plane_mask) {
+		ALOGE("%s: buffer %p cannot be shown on a plane\n",
+			__func__, drm_handle);
+		return -EINVAL;
+	}
+
+	for (j = 0; j < plane_count; j++, plane++) {
+		/* if plane is available and can support this buffer */
+		if (!plane->active &&
+			drm_handle->plane_mask &
+			(1U << plane->drm_plane->plane_id)) {
+
+			plane->dst_x = dst_x;
+			plane->dst_y = dst_y;
+			plane->dst_w = dst_w;
+			plane->dst_h = dst_h;
+			plane->src_x = src_x;
+			plane->src_y = src_y;
+			plane->src_w = src_w;
+			plane->src_h = src_h;
+			plane->handle = handle;
+			plane->active = 1;
+
+			return 0;
+		}
+	}
+
+	/* no free planes available */
+	return -EBUSY;
+}
+
+/*
+ * Interface for HWC, used to disable all the overlays.
+ */
+void gralloc_drm_disable_planes(struct gralloc_drm_t *drm)
+{
+	struct gralloc_drm_plane_t *plane = drm->planes;
+	unsigned int i;
+
+	for (i = 0; i < drm->plane_resources->count_planes; i++, plane++)
+		plane->active = 0;
+}
+
+
+/*
  * Schedule a page flip.
  */
 static int drm_kms_page_flip(struct gralloc_drm_t *drm,
@@ -228,6 +374,9 @@ static int drm_kms_page_flip(struct gralloc_drm_t *drm,
 				strerror(errno), drm->hdmi.crtc_id, drm->hdmi.bo->fb_id);
 	}
 	pthread_mutex_unlock(&drm->hdmi_mutex);
+
+	/* set planes to be displayed */
+	gralloc_drm_set_planes(drm);
 
 	ret = drmModePageFlip(drm->fd, drm->primary.crtc_id, bo->fb_id,
 			DRM_MODE_PAGE_FLIP_EVENT, (void *) drm);

@@ -352,6 +352,9 @@ struct drm_module_t HAL_MODULE_INFO_SYM = {
 		.unlock = drm_mod_unlock,
 		.perform = drm_mod_perform
 	},
+	.hwc_reserve_plane = gralloc_drm_reserve_plane,
+	.hwc_disable_planes = gralloc_drm_disable_planes,
+
 	.mutex = PTHREAD_MUTEX_INITIALIZER,
 	.drm = NULL
 };
