@@ -40,7 +40,6 @@
 #include "gralloc_drm_priv.h"
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
-#define ALIGN(val, align) (((val) + (align) - 1) & ~((align) - 1))
 
 #define NVC0_TILE_HEIGHT(m) (8 << ((m) >> 4))
 

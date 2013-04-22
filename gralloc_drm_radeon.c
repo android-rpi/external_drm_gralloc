@@ -46,7 +46,6 @@
 #define RADEON_GPU_PAGE_SIZE 4096
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
-#define ALIGN(val, align) (((val) + (align) - 1) & ~((align) - 1))
 
 struct radeon_info {
 	struct gralloc_drm_drv_t base;
