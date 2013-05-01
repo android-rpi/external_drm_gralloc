@@ -25,7 +25,7 @@
 #define _GRALLOC_DRM_H_
 
 #include <hardware/gralloc.h>
-#include "gralloc_drm_formats.h"
+#include <system/graphics.h>
 
 #ifdef __cplusplus
 extern "C" {
