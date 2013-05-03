@@ -23,7 +23,7 @@
 
 DRM_GPU_DRIVERS := $(strip $(filter-out swrast, $(BOARD_GPU_DRIVERS)))
 
-intel_drivers := i915 i965 i915g
+intel_drivers := i915 i965 i915g ilo
 radeon_drivers := r300g r600g
 nouveau_drivers := nouveau
 vmwgfx_drivers := vmwgfx
