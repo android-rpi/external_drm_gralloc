@@ -138,10 +138,13 @@ int gralloc_drm_bo_add_fb(struct gralloc_drm_bo_t *bo);
 void gralloc_drm_bo_rm_fb(struct gralloc_drm_bo_t *bo);
 int gralloc_drm_bo_post(struct gralloc_drm_bo_t *bo);
 
-int gralloc_drm_reserve_plane(struct gralloc_drm_t *drm, buffer_handle_t handle,
+int gralloc_drm_reserve_plane(struct gralloc_drm_t *drm,
+	buffer_handle_t handle, uint32_t id,
 	uint32_t dst_x, uint32_t dst_y, uint32_t dst_w, uint32_t dst_h,
 	uint32_t src_x, uint32_t src_y, uint32_t src_w, uint32_t src_h);
 void gralloc_drm_disable_planes(struct gralloc_drm_t *mod);
+int gralloc_drm_set_plane_handle(struct gralloc_drm_t *drm,
+	uint32_t id, buffer_handle_t handle);
 
 #ifdef __cplusplus
 }

@@ -354,6 +354,7 @@ struct drm_module_t HAL_MODULE_INFO_SYM = {
 	},
 	.hwc_reserve_plane = gralloc_drm_reserve_plane,
 	.hwc_disable_planes = gralloc_drm_disable_planes,
+	.hwc_set_plane_handle = gralloc_drm_set_plane_handle,
 
 	.mutex = PTHREAD_MUTEX_INITIALIZER,
 	.drm = NULL

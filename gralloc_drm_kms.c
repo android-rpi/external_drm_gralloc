@@ -287,6 +287,7 @@ static void gralloc_drm_set_planes(struct gralloc_drm_t *drm)
  */
 int gralloc_drm_reserve_plane(struct gralloc_drm_t *drm,
 	buffer_handle_t handle,
+	uint32_t id,
 	uint32_t dst_x,
 	uint32_t dst_y,
 	uint32_t dst_w,
@@ -333,6 +334,7 @@ int gralloc_drm_reserve_plane(struct gralloc_drm_t *drm,
 			plane->src_w = src_w;
 			plane->src_h = src_h;
 			plane->handle = handle;
+			plane->id = id;
 			plane->active = 1;
 
 			return 0;
@@ -344,17 +346,38 @@ int gralloc_drm_reserve_plane(struct gralloc_drm_t *drm,
 }
 
 /*
- * Interface for HWC, used to disable all the overlays.
+ * Interface for HWC, used to disable all the overlays. Plane id
+ * is also set to 0 as it should be mappable to a particular layer only
+ * if it has been reserved with 'reserve_plane'.
  */
 void gralloc_drm_disable_planes(struct gralloc_drm_t *drm)
 {
 	struct gralloc_drm_plane_t *plane = drm->planes;
 	unsigned int i;
 
-	for (i = 0; i < drm->plane_resources->count_planes; i++, plane++)
+	for (i = 0; i < drm->plane_resources->count_planes; i++, plane++) {
 		plane->active = 0;
+		plane->id = 0;
+	}
 }
 
+/*
+ * Interface for HWC, used to change handle of a reserved plane.
+ */
+int gralloc_drm_set_plane_handle(struct gralloc_drm_t *drm,
+	uint32_t id, buffer_handle_t handle)
+{
+	struct gralloc_drm_plane_t *plane = drm->planes;
+	unsigned i;
+
+	for (i = 0; i < drm->plane_resources->count_planes; i++, plane++)
+		if (plane->active && plane->id == id) {
+			plane->handle = handle;
+			return 0;
+		}
+
+	return -EINVAL;
+}
 
 /*
  * Schedule a page flip.
