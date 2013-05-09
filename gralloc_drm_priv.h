@@ -74,6 +74,7 @@ struct gralloc_drm_output
 {
 	uint32_t crtc_id;
 	uint32_t connector_id;
+	uint32_t pipe;
 	drmModeModeInfo mode;
 	int xdpi, ydpi;
 	int fb_format;

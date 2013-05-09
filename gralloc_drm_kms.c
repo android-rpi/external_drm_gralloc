@@ -243,6 +243,16 @@ static int gralloc_drm_bo_setplane(struct gralloc_drm_t *drm,
 }
 
 /*
+ * Returns if a particular plane is supported with the implementation
+ */
+static unsigned is_plane_supported(const struct gralloc_drm_t *drm,
+	const struct gralloc_drm_plane_t *plane)
+{
+	/* Planes are only supported on primary pipe for now */
+	return plane->drm_plane->possible_crtcs & (1 << drm->primary.pipe);
+}
+
+/*
  * Sets all the active planes to be displayed.
  */
 static void gralloc_drm_set_planes(struct gralloc_drm_t *drm)
@@ -251,6 +261,15 @@ static void gralloc_drm_set_planes(struct gralloc_drm_t *drm)
 	unsigned int i;
 	for (i = 0; i < drm->plane_resources->count_planes;
 		i++, plane++) {
+		/* plane is not in use at all */
+		if (!plane->active && !plane->handle)
+			continue;
+
+		/* plane is active, safety check if it is supported */
+		if (!is_plane_supported(drm, plane))
+			ALOGE("%s: plane %d is not supported",
+				 __func__, plane->drm_plane->plane_id);
+
 		/*
 		 * Disable overlay if it is not active
 		 * or if there is error during setplane
@@ -291,6 +310,15 @@ int gralloc_drm_reserve_plane(struct gralloc_drm_t *drm,
 	}
 
 	for (j = 0; j < plane_count; j++, plane++) {
+
+		/*
+		 * handle may be suitable to be shown on a plane, in
+		 * addition we need to check that this particular plane
+		 * is supported by the current implementation
+		 */
+		if (!is_plane_supported(drm, plane))
+			continue;
+
 		/* if plane is available and can support this buffer */
 		if (!plane->active &&
 			drm_handle->plane_mask &
@@ -723,6 +751,7 @@ static int drm_kms_init_with_connector(struct gralloc_drm_t *drm,
 	output->bo = NULL;
 	output->crtc_id = drm->resources->crtcs[i];
 	output->connector_id = connector->connector_id;
+	output->pipe = i;
 
 	/* print connector info */
 	if (connector->count_modes > 1) {
