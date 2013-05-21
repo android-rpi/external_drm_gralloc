@@ -50,9 +50,10 @@ static unsigned int drm_format_from_hal(int hal_format)
 {
 	switch(hal_format) {
 		case HAL_PIXEL_FORMAT_RGB_888:
-		case HAL_PIXEL_FORMAT_RGBX_8888:
 		case HAL_PIXEL_FORMAT_BGRA_8888:
 			return DRM_FORMAT_XRGB8888;
+		case HAL_PIXEL_FORMAT_RGBX_8888:
+			return DRM_FORMAT_XBGR8888;
 		case HAL_PIXEL_FORMAT_RGBA_8888:
 			return DRM_FORMAT_RGBA8888;
 		case HAL_PIXEL_FORMAT_RGB_565:
