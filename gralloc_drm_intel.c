@@ -62,6 +62,7 @@ struct intel_info {
 	drm_intel_bo *batch_ibo;
 	uint32_t *batch, *cur;
 	int capacity, size;
+	int exec_blt;
 };
 
 struct intel_buffer {
@@ -131,7 +132,7 @@ batch_flush(struct intel_info *info)
 		goto fail;
 	}
 	ret = drm_intel_bo_mrb_exec(info->batch_ibo, size,
-		NULL, 0, 0, I915_EXEC_BLT);
+		NULL, 0, 0, info->exec_blt);
 	if (ret) {
 		ALOGE("failed to exec batch");
 		goto fail;
@@ -564,7 +565,7 @@ static void intel_init_kms_features(struct gralloc_drm_drv_t *drv,
 {
 	struct intel_info *info = (struct intel_info *) drv;
 	struct drm_i915_getparam gp;
-	int pageflipping, id;
+	int pageflipping, id, has_blt;
 
 	switch (drm->primary.fb_format) {
 	case HAL_PIXEL_FORMAT_BGRA_8888:
@@ -590,6 +591,13 @@ static void intel_init_kms_features(struct gralloc_drm_drv_t *drv,
 	gp.value = &id;
 	if (drmCommandWriteRead(drm->fd, DRM_I915_GETPARAM, &gp, sizeof(gp)))
 		id = 0;
+
+	memset(&gp, 0, sizeof(gp));
+	gp.param = I915_PARAM_HAS_BLT;
+	gp.value = &has_blt;
+	if (drmCommandWriteRead(drm->fd, DRM_I915_GETPARAM, &gp, sizeof(gp)))
+		has_blt = 0;
+	info->exec_blt = has_blt ? I915_EXEC_BLT : 0;
 
 	/* GEN4, G4X, GEN5, GEN6, GEN7 */
 	if ((IS_9XX(id) || IS_G4X(id)) && !IS_GEN3(id)) {
