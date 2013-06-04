@@ -207,6 +207,7 @@ static struct gralloc_drm_bo_t *validate_handle(buffer_handle_t _handle,
 			bo->drm = drm;
 			bo->imported = 1;
 			bo->handle = handle;
+			bo->refcount = 1;
 		}
 
 		handle->data_owner = gralloc_drm_get_pid();
