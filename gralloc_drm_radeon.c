@@ -490,10 +490,15 @@ static int radeon_probe(struct radeon_info *info)
 		return -EINVAL;
 	}
 
-	err = radeon_init_tile_config(info);
-	if (err) {
-		ALOGE("failed to get tiling config");
-		return err;
+	if (info->chip_family >= CHIP_FAMILY_R600) {
+		err = radeon_init_tile_config(info);
+		if (err) {
+			ALOGE("failed to get tiling config");
+			return err;
+		}
+	} else {
+		/* No tiling config for family older than 06xx */
+		info->have_tiling_info = 0;
 	}
 
 	/* CPU cannot handle tiled buffers (need scratch buffers) */
