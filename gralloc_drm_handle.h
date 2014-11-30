@@ -31,6 +31,8 @@
 extern "C" {
 #endif
 
+struct gralloc_drm_bo_t;
+
 struct gralloc_drm_handle_t {
 	native_handle_t base;
 
@@ -50,7 +52,7 @@ struct gralloc_drm_handle_t {
 	int stride; /* the stride in bytes */
 
 	int data_owner; /* owner of data (for validation) */
-	int data;       /* pointer to struct gralloc_drm_bo_t */
+	struct gralloc_drm_bo_t *data; /* pointer to struct gralloc_drm_bo_t */
 };
 
 static inline struct gralloc_drm_handle_t *gralloc_drm_handle(buffer_handle_t _handle)

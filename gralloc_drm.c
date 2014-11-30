@@ -211,10 +211,10 @@ static struct gralloc_drm_bo_t *validate_handle(buffer_handle_t _handle,
 		}
 
 		handle->data_owner = gralloc_drm_get_pid();
-		handle->data = (int) bo;
+		handle->data = bo;
 	}
 
-	return (struct gralloc_drm_bo_t *) handle->data;
+	return handle->data;
 }
 
 /*
@@ -296,7 +296,7 @@ struct gralloc_drm_bo_t *gralloc_drm_bo_create(struct gralloc_drm_t *drm,
 	bo->refcount = 1;
 
 	handle->data_owner = gralloc_drm_get_pid();
-	handle->data = (int) bo;
+	handle->data = bo;
 
 	return bo;
 }
@@ -365,7 +365,7 @@ void gralloc_drm_resolve_format(buffer_handle_t _handle,
 	uint32_t *pitches, uint32_t *offsets, uint32_t *handles)
 {
 	struct gralloc_drm_handle_t *handle = gralloc_drm_handle(_handle);
-	struct gralloc_drm_bo_t *bo = (struct gralloc_drm_bo_t *) handle->data;
+	struct gralloc_drm_bo_t *bo = handle->data;
 	struct gralloc_drm_t *drm = bo->drm;
 
 	/* if handle exists and driver implements resolve_format */

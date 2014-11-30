@@ -299,7 +299,7 @@ int gralloc_drm_reserve_plane(struct gralloc_drm_t *drm,
 	uint32_t src_w,
 	uint32_t src_h)
 {
-	unsigned int i, j;
+	int j;
 	struct gralloc_drm_handle_t *drm_handle =
 		gralloc_drm_handle(handle);
 	int plane_count = drm->plane_resources->count_planes;
@@ -1092,15 +1092,14 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 	if (!drm->plane_resources) {
 		ALOGD("no planes found from drm resources");
 	} else {
+		unsigned int i, j;
+
 		ALOGD("supported drm planes and formats");
 		/* fill a helper structure for hwcomposer */
 		drm->planes = calloc(drm->plane_resources->count_planes,
 			sizeof(struct gralloc_drm_plane_t));
 
 		for (i = 0; i < drm->plane_resources->count_planes; i++) {
-
-			unsigned int j;
-
 			drm->planes[i].drm_plane = drmModeGetPlane(drm->fd,
 				drm->plane_resources->planes[i]);
 
