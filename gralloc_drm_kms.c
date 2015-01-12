@@ -61,8 +61,6 @@ static unsigned int drm_format_from_hal(int hal_format)
 			return DRM_FORMAT_RGB565;
 		case HAL_PIXEL_FORMAT_YV12:
 			return DRM_FORMAT_YUV420;
-		case HAL_PIXEL_FORMAT_DRM_NV12:
-			return DRM_FORMAT_NV12;
 		default:
 			return 0;
 	}
