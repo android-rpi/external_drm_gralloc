@@ -45,13 +45,6 @@ int gralloc_drm_auth_magic(struct gralloc_drm_t *drm, int32_t magic);
 int gralloc_drm_set_master(struct gralloc_drm_t *drm);
 void gralloc_drm_drop_master(struct gralloc_drm_t *drm);
 
-int gralloc_drm_init_kms(struct gralloc_drm_t *drm);
-void gralloc_drm_fini_kms(struct gralloc_drm_t *drm);
-int gralloc_drm_is_kms_initialized(struct gralloc_drm_t *drm);
-
-void gralloc_drm_get_kms_info(struct gralloc_drm_t *drm, struct framebuffer_device_t *fb);
-int gralloc_drm_is_kms_pipelined(struct gralloc_drm_t *drm);
-
 static inline int gralloc_drm_get_bpp(int format)
 {
 	int bpp;
@@ -128,19 +121,6 @@ unsigned int planes_for_format(struct gralloc_drm_t *drm, int hal_format);
 
 int gralloc_drm_bo_lock(struct gralloc_drm_bo_t *bo, int x, int y, int w, int h, int enable_write, void **addr);
 void gralloc_drm_bo_unlock(struct gralloc_drm_bo_t *bo);
-
-int gralloc_drm_bo_need_fb(const struct gralloc_drm_bo_t *bo);
-int gralloc_drm_bo_add_fb(struct gralloc_drm_bo_t *bo);
-void gralloc_drm_bo_rm_fb(struct gralloc_drm_bo_t *bo);
-int gralloc_drm_bo_post(struct gralloc_drm_bo_t *bo);
-
-int gralloc_drm_reserve_plane(struct gralloc_drm_t *drm,
-	buffer_handle_t handle, uint32_t id,
-	uint32_t dst_x, uint32_t dst_y, uint32_t dst_w, uint32_t dst_h,
-	uint32_t src_x, uint32_t src_y, uint32_t src_w, uint32_t src_h);
-void gralloc_drm_disable_planes(struct gralloc_drm_t *mod);
-int gralloc_drm_set_plane_handle(struct gralloc_drm_t *drm,
-	uint32_t id, buffer_handle_t handle);
 
 #ifdef __cplusplus
 }

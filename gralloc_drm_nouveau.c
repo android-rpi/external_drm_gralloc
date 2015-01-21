@@ -267,27 +267,6 @@ static void nouveau_unmap(struct gralloc_drm_drv_t *drv,
 	nouveau_bo_unmap(nb->bo);
 }
 
-static void nouveau_init_kms_features(struct gralloc_drm_drv_t *drv,
-		struct gralloc_drm_t *drm)
-{
-	struct nouveau_info *info = (struct nouveau_info *) drv;
-
-	switch (drm->primary.fb_format) {
-	case HAL_PIXEL_FORMAT_BGRA_8888:
-	case HAL_PIXEL_FORMAT_RGB_565:
-		break;
-	default:
-		drm->primary.fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
-		break;
-	}
-
-	drm->mode_quirk_vmwgfx = 0;
-	drm->swap_mode = (info->chan) ? DRM_SWAP_FLIP : DRM_SWAP_SETCRTC;
-	drm->mode_sync_flip = 1;
-	drm->swap_interval = 1;
-	drm->vblank_secondary = 0;
-}
-
 static void nouveau_destroy(struct gralloc_drm_drv_t *drv)
 {
 	struct nouveau_info *info = (struct nouveau_info *) drv;
@@ -374,7 +353,6 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_nouveau(int fd)
 	}
 
 	info->base.destroy = nouveau_destroy;
-	info->base.init_kms_features = nouveau_init_kms_features;
 	info->base.alloc = nouveau_alloc;
 	info->base.free = nouveau_free;
 	info->base.map = nouveau_map;
