@@ -93,6 +93,7 @@ LOCAL_SHARED_LIBRARIES := \
 	liblog \
 	libcutils \
 	libhardware_legacy \
+	libutils
 
 ifneq ($(filter $(intel_drivers), $(DRM_GPU_DRIVERS)),)
 LOCAL_SRC_FILES += gralloc_drm_intel.c
@@ -154,11 +155,12 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := \
 	external/libdrm \
-	external/libdrm/include/drm \
+	external/libdrm/include/drm
 
 LOCAL_SHARED_LIBRARIES := \
 	libgralloc_drm \
 	liblog \
+	libutils
 
 # for glFlush/glFinish
 LOCAL_SHARED_LIBRARIES += \

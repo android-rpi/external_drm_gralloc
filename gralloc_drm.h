@@ -38,20 +38,12 @@ struct gralloc_drm_bo_t;
 
 enum {
 	GRALLOC_MODULE_PERFORM_GET_DRM_FD                = 0x80000002,
-	GRALLOC_MODULE_PERFORM_GET_DRM_MAGIC             = 0x80000003,
-	GRALLOC_MODULE_PERFORM_AUTH_DRM_MAGIC            = 0x80000004,
-	GRALLOC_MODULE_PERFORM_ENTER_VT                  = 0x80000005,
-	GRALLOC_MODULE_PERFORM_LEAVE_VT                  = 0x80000006,
 };
 
 struct gralloc_drm_t *gralloc_drm_create(void);
 void gralloc_drm_destroy(struct gralloc_drm_t *drm);
 
 int gralloc_drm_get_fd(struct gralloc_drm_t *drm);
-int gralloc_drm_get_magic(struct gralloc_drm_t *drm, int32_t *magic);
-int gralloc_drm_auth_magic(struct gralloc_drm_t *drm, int32_t magic);
-int gralloc_drm_set_master(struct gralloc_drm_t *drm);
-void gralloc_drm_drop_master(struct gralloc_drm_t *drm);
 
 static inline int gralloc_drm_get_bpp(int format)
 {

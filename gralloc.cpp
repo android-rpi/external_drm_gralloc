@@ -69,30 +69,6 @@ static int drm_mod_perform(const struct gralloc_module_t *mod, int op, ...)
 			err = 0;
 		}
 		break;
-	/* should we remove this and next ops, and make it transparent? */
-	case GRALLOC_MODULE_PERFORM_GET_DRM_MAGIC:
-		{
-			int32_t *magic = va_arg(args, int32_t *);
-			err = gralloc_drm_get_magic(dmod->drm, magic);
-		}
-		break;
-	case GRALLOC_MODULE_PERFORM_AUTH_DRM_MAGIC:
-		{
-			int32_t magic = va_arg(args, int32_t);
-			err = gralloc_drm_auth_magic(dmod->drm, magic);
-		}
-		break;
-	case GRALLOC_MODULE_PERFORM_ENTER_VT:
-		{
-			err = gralloc_drm_set_master(dmod->drm);
-		}
-		break;
-	case GRALLOC_MODULE_PERFORM_LEAVE_VT:
-		{
-			gralloc_drm_drop_master(dmod->drm);
-			err = 0;
-		}
-		break;
 	default:
 		err = -EINVAL;
 		break;
@@ -150,8 +126,10 @@ static int drm_mod_unlock(const gralloc_module_t *mod, buffer_handle_t handle)
 
 static int drm_mod_close_gpu0(struct hw_device_t *dev)
 {
+	struct drm_module_t *dmod = (struct drm_module_t *)dev->module;
 	struct alloc_device_t *alloc = (struct alloc_device_t *) dev;
 
+	gralloc_drm_destroy(dmod->drm);
 	delete alloc;
 
 	return 0;

@@ -36,9 +36,10 @@ struct gralloc_drm_bo_t;
 struct gralloc_drm_handle_t {
 	native_handle_t base;
 
-#define GRALLOC_DRM_HANDLE_MAGIC 0x12345678
-#define GRALLOC_DRM_HANDLE_NUM_INTS 10
-#define GRALLOC_DRM_HANDLE_NUM_FDS 0
+	/* file descriptors */
+	int prime_fd;
+
+	/* integers */
 	int magic;
 
 	int width;
@@ -49,9 +50,17 @@ struct gralloc_drm_handle_t {
 	int name;   /* the name of the bo */
 	int stride; /* the stride in bytes */
 
-	int data_owner; /* owner of data (for validation) */
 	struct gralloc_drm_bo_t *data; /* pointer to struct gralloc_drm_bo_t */
+
+	// FIXME: the attributes below should be out-of-line
+	uint64_t unknown __attribute__((aligned(8)));
+	int data_owner; /* owner of data (for validation) */
 };
+#define GRALLOC_DRM_HANDLE_MAGIC 0x12345678
+#define GRALLOC_DRM_HANDLE_NUM_FDS 1
+#define GRALLOC_DRM_HANDLE_NUM_INTS (						\
+	((sizeof(struct gralloc_drm_handle_t) - sizeof(native_handle_t))/sizeof(int))	\
+	 - GRALLOC_DRM_HANDLE_NUM_FDS)
 
 static inline struct gralloc_drm_handle_t *gralloc_drm_handle(buffer_handle_t _handle)
 {
@@ -61,8 +70,12 @@ static inline struct gralloc_drm_handle_t *gralloc_drm_handle(buffer_handle_t _h
 	if (handle && (handle->base.version != sizeof(handle->base) ||
 	               handle->base.numInts != GRALLOC_DRM_HANDLE_NUM_INTS ||
 	               handle->base.numFds != GRALLOC_DRM_HANDLE_NUM_FDS ||
-	               handle->magic != GRALLOC_DRM_HANDLE_MAGIC))
+	               handle->magic != GRALLOC_DRM_HANDLE_MAGIC)) {
+		ALOGE("invalid handle: version=%d, numInts=%d, numFds=%d, magic=%x",
+			handle->base.version, handle->base.numInts,
+			handle->base.numFds, handle->magic);
 		handle = NULL;
+	}
 
 	return handle;
 }
