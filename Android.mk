@@ -25,6 +25,7 @@ DRM_GPU_DRIVERS := $(strip $(filter-out swrast, $(BOARD_GPU_DRIVERS)))
 
 intel_drivers := i915 i965 i915g ilo
 radeon_drivers := r300g r600g
+rockchip_drivers := rockchip
 nouveau_drivers := nouveau
 vmwgfx_drivers := vmwgfx
 
@@ -32,6 +33,7 @@ valid_drivers := \
 	prebuilt \
 	$(intel_drivers) \
 	$(radeon_drivers) \
+	$(rockchip_drivers) \
 	$(nouveau_drivers) \
 	$(vmwgfx_drivers)
 
@@ -114,6 +116,12 @@ LOCAL_SRC_FILES += gralloc_drm_nouveau.c
 LOCAL_C_INCLUDES += external/libdrm/nouveau
 LOCAL_CFLAGS += -DENABLE_NOUVEAU
 LOCAL_SHARED_LIBRARIES += libdrm_nouveau
+endif
+
+ifneq ($(filter $(rockchip_drivers), $(DRM_GPU_DRIVERS)),)
+LOCAL_SRC_FILES += gralloc_drm_rockchip.c
+LOCAL_CFLAGS += -DENABLE_ROCKCHIP
+LOCAL_SHARED_LIBRARIES += libdrm_rockchip
 endif
 
 ifeq ($(strip $(DRM_USES_PIPE)),true)

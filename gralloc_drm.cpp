@@ -79,6 +79,10 @@ init_drv_from_fd(int fd)
 		if (!drv && !strcmp(version->name, "radeon"))
 			drv = gralloc_drm_drv_create_for_radeon(fd);
 #endif
+#ifdef ENABLE_ROCKCHIP
+		if (!drv && !strcmp(version->name, "rockchip"))
+			drv = gralloc_drm_drv_create_for_rockchip(fd);
+#endif
 #ifdef ENABLE_NOUVEAU
 		if (!drv && !strcmp(version->name, "nouveau"))
 			drv = gralloc_drm_drv_create_for_nouveau(fd);
