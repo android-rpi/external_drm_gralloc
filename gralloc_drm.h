@@ -36,6 +36,14 @@ extern "C" {
 struct gralloc_drm_t;
 struct gralloc_drm_bo_t;
 
+enum {
+	GRALLOC_MODULE_PERFORM_GET_DRM_FD                = 0x80000002,
+	GRALLOC_MODULE_PERFORM_GET_DRM_MAGIC             = 0x80000003,
+	GRALLOC_MODULE_PERFORM_AUTH_DRM_MAGIC            = 0x80000004,
+	GRALLOC_MODULE_PERFORM_ENTER_VT                  = 0x80000005,
+	GRALLOC_MODULE_PERFORM_LEAVE_VT                  = 0x80000006,
+};
+
 struct gralloc_drm_t *gralloc_drm_create(void);
 void gralloc_drm_destroy(struct gralloc_drm_t *drm);
 
