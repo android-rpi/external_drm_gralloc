@@ -33,9 +33,9 @@
 #include "gralloc_drm_priv.h"
 
 /*
- * Initialize the DRM device object, optionally with KMS.
+ * Initialize the DRM device object
  */
-static int drm_init(struct drm_module_t *dmod, int kms)
+static int drm_init(struct drm_module_t *dmod)
 {
 	int err = 0;
 
@@ -45,8 +45,6 @@ static int drm_init(struct drm_module_t *dmod, int kms)
 		if (!dmod->drm)
 			err = -EINVAL;
 	}
-	if (!err && kms)
-		err = gralloc_drm_init_kms(dmod->drm);
 	pthread_mutex_unlock(&dmod->mutex);
 
 	return err;
@@ -58,7 +56,7 @@ static int drm_mod_perform(const struct gralloc_module_t *mod, int op, ...)
 	va_list args;
 	int err;
 
-	err = drm_init(dmod, 0);
+	err = drm_init(dmod);
 	if (err)
 		return err;
 
@@ -110,7 +108,7 @@ static int drm_mod_register_buffer(const gralloc_module_t *mod,
 	struct drm_module_t *dmod = (struct drm_module_t *) mod;
 	int err;
 
-	err = drm_init(dmod, 0);
+	err = drm_init(dmod);
 	if (err)
 		return err;
 
@@ -189,15 +187,6 @@ static int drm_mod_alloc_gpu0(alloc_device_t *dev,
 	if (!bo)
 		return -ENOMEM;
 
-	if (gralloc_drm_bo_need_fb(bo)) {
-		err = gralloc_drm_bo_add_fb(bo);
-		if (err) {
-			ALOGE("failed to add fb");
-			gralloc_drm_bo_decref(bo);
-			return err;
-		}
-	}
-
 	*handle = gralloc_drm_bo_get_handle(bo, stride);
 	/* in pixels */
 	*stride /= bpp;
@@ -210,7 +199,7 @@ static int drm_mod_open_gpu0(struct drm_module_t *dmod, hw_device_t **dev)
 	struct alloc_device_t *alloc;
 	int err;
 
-	err = drm_init(dmod, 0);
+	err = drm_init(dmod);
 	if (err)
 		return err;
 
@@ -231,90 +220,6 @@ static int drm_mod_open_gpu0(struct drm_module_t *dmod, hw_device_t **dev)
 	return 0;
 }
 
-static int drm_mod_close_fb0(struct hw_device_t *dev)
-{
-	struct framebuffer_device_t *fb = (struct framebuffer_device_t *) dev;
-
-	free(fb);
-
-	return 0;
-}
-
-static int drm_mod_set_swap_interval_fb0(struct framebuffer_device_t *fb,
-		int interval)
-{
-	if (interval < fb->minSwapInterval || interval > fb->maxSwapInterval)
-		return -EINVAL;
-	return 0;
-}
-
-static int drm_mod_post_fb0(struct framebuffer_device_t *fb,
-		buffer_handle_t handle)
-{
-	struct drm_module_t *dmod = (struct drm_module_t *) fb->common.module;
-	struct gralloc_drm_bo_t *bo;
-
-	bo = gralloc_drm_bo_from_handle(handle);
-	if (!bo)
-		return -EINVAL;
-
-	return gralloc_drm_bo_post(bo);
-}
-
-#include <GLES/gl.h>
-static int drm_mod_composition_complete_fb0(struct framebuffer_device_t *fb)
-{
-	struct drm_module_t *dmod = (struct drm_module_t *) fb->common.module;
-
-	if (gralloc_drm_is_kms_pipelined(dmod->drm))
-		glFlush();
-	else
-		glFinish();
-
-	return 0;
-}
-
-static int drm_mod_open_fb0(struct drm_module_t *dmod, struct hw_device_t **dev)
-{
-	struct framebuffer_device_t *fb;
-	int err;
-
-	err = drm_init(dmod, 1);
-	if (err)
-		return err;
-
-	fb = calloc(1, sizeof(*fb));
-	if (!fb)
-		return -ENOMEM;
-
-	fb->common.tag = HARDWARE_DEVICE_TAG;
-	fb->common.version = 0;
-	fb->common.module = &dmod->base.common;
-	fb->common.close = drm_mod_close_fb0;
-
-	fb->setSwapInterval = drm_mod_set_swap_interval_fb0;
-	fb->post = drm_mod_post_fb0;
-	fb->compositionComplete = drm_mod_composition_complete_fb0;
-
-	gralloc_drm_get_kms_info(dmod->drm, fb);
-
-	*dev = &fb->common;
-
-	ALOGI("mode.hdisplay %d\n"
-	     "mode.vdisplay %d\n"
-	     "mode.vrefresh %f\n"
-	     "format 0x%x\n"
-	     "xdpi %f\n"
-	     "ydpi %f\n",
-	     fb->width,
-	     fb->height,
-	     fb->fps,
-	     fb->format,
-	     fb->xdpi, fb->ydpi);
-
-	return 0;
-}
-
 static int drm_mod_open(const struct hw_module_t *mod,
 		const char *name, struct hw_device_t **dev)
 {
@@ -323,8 +228,6 @@ static int drm_mod_open(const struct hw_module_t *mod,
 
 	if (strcmp(name, GRALLOC_HARDWARE_GPU0) == 0)
 		err = drm_mod_open_gpu0(dmod, dev);
-	else if (strcmp(name, GRALLOC_HARDWARE_FB0) == 0)
-		err = drm_mod_open_fb0(dmod, dev);
 	else
 		err = -EINVAL;
 
@@ -352,9 +255,6 @@ struct drm_module_t HAL_MODULE_INFO_SYM = {
 		.unlock = drm_mod_unlock,
 		.perform = drm_mod_perform
 	},
-	.hwc_reserve_plane = gralloc_drm_reserve_plane,
-	.hwc_disable_planes = gralloc_drm_disable_planes,
-	.hwc_set_plane_handle = gralloc_drm_set_plane_handle,
 
 	.mutex = PTHREAD_MUTEX_INITIALIZER,
 	.drm = NULL

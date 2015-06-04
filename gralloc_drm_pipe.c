@@ -281,83 +281,6 @@ static void pipe_unmap(struct gralloc_drm_drv_t *drv,
 	pthread_mutex_unlock(&pm->mutex);
 }
 
-static void pipe_blit(struct gralloc_drm_drv_t *drv,
-		struct gralloc_drm_bo_t *dst_bo,
-		struct gralloc_drm_bo_t *src_bo,
-		uint16_t dst_x1, uint16_t dst_y1,
-		uint16_t dst_x2, uint16_t dst_y2,
-		uint16_t src_x1, uint16_t src_y1,
-		uint16_t src_x2, uint16_t src_y2)
-{
-	struct pipe_manager *pm = (struct pipe_manager *) drv;
-	struct pipe_buffer *dst = (struct pipe_buffer *) dst_bo;
-	struct pipe_buffer *src = (struct pipe_buffer *) src_bo;
-	struct pipe_box src_box;
-
-	if (dst_bo->handle->width != src_bo->handle->width ||
-	    dst_bo->handle->height != src_bo->handle->height ||
-	    dst_bo->handle->stride != src_bo->handle->stride ||
-	    dst_bo->handle->format != src_bo->handle->format) {
-		ALOGE("copy between incompatible buffers");
-		return;
-	}
-
-	if (dst_x2 > dst_bo->handle->width)
-		dst_x2 = dst_bo->handle->width;
-	if (dst_y2 > dst_bo->handle->height)
-		dst_y2 = dst_bo->handle->height;
-
-	if (src_x2 <= src_x1 || src_y2 <= src_y1)
-		return;
-
-	u_box_2d(src_x1, src_y1, src_x2 - src_x1, src_y2 - src_y1, &src_box);
-
-	pthread_mutex_lock(&pm->mutex);
-
-	/* need a context for copying */
-	if (!pm->context) {
-		pm->context = pm->screen->context_create(pm->screen, NULL);
-		if (!pm->context) {
-			ALOGE("failed to create pipe context");
-			pthread_mutex_unlock(&pm->mutex);
-			return;
-		}
-	}
-
-	pm->context->resource_copy_region(pm->context,
-			dst->resource, 0, dst_x1, dst_y1, 0,
-			src->resource, 0, &src_box);
-	pm->context->flush(pm->context, NULL, 0);
-
-	pthread_mutex_unlock(&pm->mutex);
-}
-
-static void pipe_init_kms_features(struct gralloc_drm_drv_t *drv, struct gralloc_drm_t *drm)
-{
-	struct pipe_manager *pm = (struct pipe_manager *) drv;
-
-	switch (drm->primary.fb_format) {
-	case HAL_PIXEL_FORMAT_BGRA_8888:
-	case HAL_PIXEL_FORMAT_RGB_565:
-		break;
-	default:
-		drm->primary.fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
-		break;
-	}
-
-	if (strcmp(pm->driver, "vmwgfx") == 0) {
-		drm->mode_quirk_vmwgfx = 1;
-		drm->swap_mode = DRM_SWAP_COPY;
-	}
-	else {
-		drm->mode_quirk_vmwgfx = 0;
-		drm->swap_mode = DRM_SWAP_FLIP;
-	}
-	drm->mode_sync_flip = 1;
-	drm->swap_interval = 1;
-	drm->vblank_secondary = 0;
-}
-
 static void pipe_destroy(struct gralloc_drm_drv_t *drv)
 {
 	struct pipe_manager *pm = (struct pipe_manager *) drv;
@@ -552,12 +475,10 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_pipe(int fd, const char *na
 	}
 
 	pm->base.destroy = pipe_destroy;
-	pm->base.init_kms_features = pipe_init_kms_features;
 	pm->base.alloc = pipe_alloc;
 	pm->base.free = pipe_free;
 	pm->base.map = pipe_map;
 	pm->base.unmap = pipe_unmap;
-	pm->base.blit = pipe_blit;
 
 	return &pm->base;
 }

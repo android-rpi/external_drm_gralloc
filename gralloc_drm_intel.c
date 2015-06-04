@@ -238,131 +238,6 @@ static void intel_resolve_format(struct gralloc_drm_drv_t *drv,
 	}
 }
 
-
-static void intel_blit(struct gralloc_drm_drv_t *drv,
-		struct gralloc_drm_bo_t *dst,
-		struct gralloc_drm_bo_t *src,
-		uint16_t dst_x1, uint16_t dst_y1,
-		uint16_t dst_x2, uint16_t dst_y2,
-		uint16_t src_x1, uint16_t src_y1,
-		uint16_t src_x2, uint16_t src_y2)
-{
-	struct intel_info *info = (struct intel_info *) drv;
-	struct intel_buffer *dst_ib = (struct intel_buffer *) dst;
-	struct intel_buffer *src_ib = (struct intel_buffer *) src;
-	drm_intel_bo *bo_table[3];
-	uint32_t cmd, br13, dst_pitch, src_pitch;
-
-	/*
-	 * XY_SRC_COPY_BLT_CMD does not support scaling,
-	 * rectangle dimensions much match
-	 */
-	if (src_x2 - src_x1 != dst_x2 - dst_x1 ||
-		src_y2 - src_y1 != dst_y2 - dst_y1) {
-		ALOGE("%s, src and dst rect must match", __func__);
-		return;
-	}
-
-	if (dst->handle->format != src->handle->format) {
-		ALOGE("%s, src and dst format must match", __func__);
-		return;
-	}
-
-	/* nothing to blit */
-	if (src_x2 <= src_x1 || src_y2 <= src_y1)
-		return;
-
-	/* clamp x2, y2 to surface size */
-	if (src_x2 > src->handle->width)
-		src_x2 = src->handle->width;
-	if (src_y2 > src->handle->height)
-		src_y2 = src->handle->height;
-
-	if (dst_x2 > dst->handle->width)
-		dst_x2 = dst->handle->width;
-	if (dst_y2 > dst->handle->height)
-		dst_y2 = dst->handle->height;
-
-	bo_table[0] = info->batch_ibo;
-	bo_table[1] = src_ib->ibo;
-	bo_table[2] = dst_ib->ibo;
-	if (drm_intel_bufmgr_check_aperture_space(bo_table, 3)) {
-		if (batch_flush(info))
-			return;
-		assert(!drm_intel_bufmgr_check_aperture_space(bo_table, 3));
-	}
-
-	cmd = XY_SRC_COPY_BLT_CMD;
-	br13 = 0xcc << 16; /* ROP_S/GXcopy */
-	dst_pitch = dst->handle->stride;
-	src_pitch = src->handle->stride;
-
-	/* Blit pitch must be dword-aligned.  Otherwise, the hardware appears to
-	 * drop the low bits.
-	 */
-	if (src_pitch % 4 != 0 || dst_pitch % 4 != 0) {
-		ALOGE("%s, src and dst pitch must be dword aligned", __func__);
-		return;
-	}
-
-	switch (gralloc_drm_get_bpp(dst->handle->format)) {
-	case 1:
-		break;
-	case 2:
-		br13 |= (1 << 24);
-		break;
-	case 4:
-		br13 |= (1 << 24) | (1 << 25);
-		cmd |= XY_SRC_COPY_BLT_WRITE_ALPHA | XY_SRC_COPY_BLT_WRITE_RGB;
-		break;
-	default:
-		ALOGE("%s, copy with unsupported format", __func__);
-		return;
-	}
-
-	if (info->gen >= 40) {
-		if (dst_ib->tiling != I915_TILING_NONE) {
-			assert(dst_pitch % 512 == 0);
-			dst_pitch >>= 2;
-			cmd |= XY_SRC_COPY_BLT_DST_TILED;
-		}
-		if (src_ib->tiling != I915_TILING_NONE) {
-			assert(src_pitch % 512 == 0);
-			src_pitch >>= 2;
-			cmd |= XY_SRC_COPY_BLT_SRC_TILED;
-		}
-	}
-
-	if (batch_reserve(info, 8))
-		return;
-
-	batch_dword(info, cmd);
-	batch_dword(info, br13 | (uint16_t)dst_pitch);
-	batch_dword(info, (dst_y1 << 16) | dst_x1);
-	batch_dword(info, (dst_y2 << 16) | dst_x2);
-	batch_reloc(info, dst, I915_GEM_DOMAIN_RENDER, I915_GEM_DOMAIN_RENDER);
-	batch_dword(info, (src_y1 << 16) | src_x1);
-	batch_dword(info, (uint16_t)src_pitch);
-	batch_reloc(info, src, I915_GEM_DOMAIN_RENDER, 0);
-
-	if (info->gen >= 60) {
-		batch_reserve(info, 4);
-		batch_dword(info, MI_FLUSH_DW | 2);
-		batch_dword(info, 0);
-		batch_dword(info, 0);
-		batch_dword(info, 0);
-	}
-	else {
-		int flags = (info->gen >= 40) ? 0 :
-			MI_WRITE_DIRTY_STATE | MI_INVALIDATE_MAP_CACHE;
-
-		batch_reserve(info, 1);
-		batch_dword(info, MI_FLUSH | flags);
-	}
-
-	batch_flush(info);
-}
-
 static drm_intel_bo *alloc_ibo(struct intel_info *info,
 		const struct gralloc_drm_handle_t *handle,
 		uint32_t *tiling, unsigned long *stride)
@@ -560,42 +435,21 @@ static void intel_unmap(struct gralloc_drm_drv_t *drv,
 }
 
 #include "intel_chipset.h" /* for platform detection macros */
-static void intel_init_kms_features(struct gralloc_drm_drv_t *drv,
-		struct gralloc_drm_t *drm)
+static void gen_init(struct intel_info *info)
 {
-	struct intel_info *info = (struct intel_info *) drv;
 	struct drm_i915_getparam gp;
 	int pageflipping, id, has_blt;
-
-	switch (drm->primary.fb_format) {
-	case HAL_PIXEL_FORMAT_BGRA_8888:
-	case HAL_PIXEL_FORMAT_RGB_565:
-		break;
-	default:
-		drm->primary.fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
-		break;
-	}
-
-	drm->mode_quirk_vmwgfx = 0;
-	/* why? */
-	drm->mode_sync_flip = 1;
-
-	memset(&gp, 0, sizeof(gp));
-	gp.param = I915_PARAM_HAS_PAGEFLIPPING;
-	gp.value = &pageflipping;
-	if (drmCommandWriteRead(drm->fd, DRM_I915_GETPARAM, &gp, sizeof(gp)))
-		pageflipping = 0;
 
 	memset(&gp, 0, sizeof(gp));
 	gp.param = I915_PARAM_CHIPSET_ID;
 	gp.value = &id;
-	if (drmCommandWriteRead(drm->fd, DRM_I915_GETPARAM, &gp, sizeof(gp)))
+	if (drmCommandWriteRead(info->fd, DRM_I915_GETPARAM, &gp, sizeof(gp)))
 		id = 0;
 
 	memset(&gp, 0, sizeof(gp));
 	gp.param = I915_PARAM_HAS_BLT;
 	gp.value = &has_blt;
-	if (drmCommandWriteRead(drm->fd, DRM_I915_GETPARAM, &gp, sizeof(gp)))
+	if (drmCommandWriteRead(info->fd, DRM_I915_GETPARAM, &gp, sizeof(gp)))
 		has_blt = 0;
 	info->exec_blt = has_blt ? I915_EXEC_BLT : 0;
 
@@ -612,25 +466,6 @@ static void intel_init_kms_features(struct gralloc_drm_drv_t *drv,
 	}
 	else {
 		info->gen = 30;
-	}
-
-	if (pageflipping && info->gen > 30)
-		drm->swap_mode = DRM_SWAP_FLIP;
-	else if (info->batch && info->gen == 30)
-		drm->swap_mode = DRM_SWAP_COPY;
-	else
-		drm->swap_mode = DRM_SWAP_SETCRTC;
-
-	if (drm->resources) {
-		int pipe;
-
-		pipe = drm_intel_get_pipe_from_crtc_id(info->bufmgr,
-				drm->primary.crtc_id);
-		drm->swap_interval = (pipe >= 0) ? 1 : 0;
-		drm->vblank_secondary = (pipe > 0);
-	}
-	else {
-		drm->swap_interval = 0;
 	}
 }
 
@@ -662,14 +497,13 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_intel(int fd)
 	}
 
 	batch_init(info);
+	gen_init(info);
 
 	info->base.destroy = intel_destroy;
-	info->base.init_kms_features = intel_init_kms_features;
 	info->base.alloc = intel_alloc;
 	info->base.free = intel_free;
 	info->base.map = intel_map;
 	info->base.unmap = intel_unmap;
-	info->base.blit = intel_blit;
 	info->base.resolve_format = intel_resolve_format;
 
 	return &info->base;
