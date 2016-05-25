@@ -157,7 +157,9 @@ LOCAL_STATIC_LIBRARIES += \
 	libmesa_gallium \
 	libmesa_glsl \
 	libmesa_glsl_utils \
-	libmesa_util
+        libmesa_nir \
+	libmesa_util \
+        libmesa_compiler
 LOCAL_SHARED_LIBRARIES += libdl
 endif # DRM_USES_PIPE
 include $(BUILD_SHARED_LIBRARY)
