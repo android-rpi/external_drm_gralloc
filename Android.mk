@@ -95,7 +95,6 @@ LOCAL_SHARED_LIBRARIES := \
 	libdrm \
 	liblog \
 	libcutils \
-	libhardware_legacy \
 
 ifneq ($(filter $(intel_drivers), $(DRM_GPU_DRIVERS)),)
 LOCAL_SRC_FILES += gralloc_drm_intel.c
