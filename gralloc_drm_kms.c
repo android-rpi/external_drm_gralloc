@@ -867,9 +867,6 @@ static int drm_kms_init_with_connector(struct gralloc_drm_t *drm,
 	static int used_crtcs = 0;
 	int bpp, i;
 
-	if (!connector->count_modes)
-		return -EINVAL;
-
 	encoder = drmModeGetEncoder(drm->fd, connector->encoders[0]);
 	if (!encoder)
 		return -EINVAL;
@@ -893,22 +890,14 @@ static int drm_kms_init_with_connector(struct gralloc_drm_t *drm,
 	output->pipe = i;
 
 	/* print connector info */
-	if (connector->count_modes > 1) {
-		ALOGI("there are %d modes on connector 0x%x, type %d",
-				connector->count_modes,
-				connector->connector_id,
-				connector->connector_type);
-		for (i = 0; i < connector->count_modes; i++)
-			ALOGI("  %s", connector->modes[i].name);
-	}
-	else {
-		ALOGI("there is one mode on connector 0x%d: %s",
-				connector->connector_id,
-				connector->modes[0].name);
-	}
+	ALOGI("there are %d modes on connector 0x%x, type %d",
+		connector->count_modes,
+		connector->connector_id,
+		connector->connector_type);
+	for (i = 0; i < connector->count_modes; i++)
+		ALOGI("  %s", connector->modes[i].name);
 
 	mode = find_mode(connector, &bpp);
-
 	ALOGI("the best mode is %s", mode->name);
 
 	output->mode = *mode;
