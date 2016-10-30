@@ -1109,6 +1109,7 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 	}
 
 	/* if still no connector, find first connected connector and try it */
+	int lastValidConnectorIndex = -1;
 	if (!drm->primary.active) {
 
 		for (i = 0; i < drm->resources->count_connectors; i++) {
@@ -1117,6 +1118,7 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 			connector = drmModeGetConnector(drm->fd,
 					drm->resources->connectors[i]);
 			if (connector) {
+				lastValidConnectorIndex = i;
 				if (connector->connection == DRM_MODE_CONNECTED) {
 					if (!drm_kms_init_with_connector(drm,
 							&drm->primary, connector))
@@ -1126,15 +1128,24 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 				drmModeFreeConnector(connector);
 			}
 		}
-		if (i == drm->resources->count_connectors) {
-			ALOGE("failed to find a valid crtc/connector/mode combination");
-			drmModeFreeResources(drm->resources);
-			drm->resources = NULL;
 
-			return -EINVAL;
+		/* if no connected connector found, try to enforce the use of the last valid one */
+		if (i == drm->resources->count_connectors) {
+			if (lastValidConnectorIndex > -1) {
+				ALOGD("no connected connector found, enforcing the use of valid connector %d", lastValidConnectorIndex);
+				drmModeConnectorPtr connector = drmModeGetConnector(drm->fd, drm->resources->connectors[lastValidConnectorIndex]);
+				drm_kms_init_with_connector(drm, &drm->primary, connector);
+				drmModeFreeConnector(connector);
+			}
+			else {
+				ALOGE("failed to find a valid crtc/connector/mode combination");
+				drmModeFreeResources(drm->resources);
+				drm->resources = NULL;
+
+				return -EINVAL;
+			}
 		}
 	}
-
 
 	/* check if hdmi is connected already */
 	hdmi = fetch_connector(drm, DRM_MODE_CONNECTOR_HDMIA);
