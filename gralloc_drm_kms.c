@@ -1090,9 +1090,9 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 			drm->planes[i].drm_plane = drmModeGetPlane(drm->fd,
 				drm->plane_resources->planes[i]);
 
-			ALOGD("plane id %d", drm->planes[i].drm_plane->plane_id);
+			ALOGV("plane id %d", drm->planes[i].drm_plane->plane_id);
 			for (j = 0; j < drm->planes[i].drm_plane->count_formats; j++)
-				ALOGD("    format %c%c%c%c",
+				ALOGV("    format %c%c%c%c",
 					(drm->planes[i].drm_plane->formats[j]),
 					(drm->planes[i].drm_plane->formats[j])>>8,
 					(drm->planes[i].drm_plane->formats[j])>>16,
