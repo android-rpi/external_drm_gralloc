@@ -38,6 +38,7 @@
 #include <i915_drm.h>
 
 #include "gralloc_drm.h"
+#include "gralloc_drm_formats.h"
 #include "gralloc_drm_priv.h"
 
 #define MI_NOOP                     (0)
