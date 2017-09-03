@@ -34,10 +34,53 @@
 extern "C" {
 #endif
 
+struct gralloc_drm_output
+{
+	uint32_t crtc_id;
+	uint32_t connector_id;
+	uint32_t pipe;
+	drmModeModeInfo mode;
+	int xdpi, ydpi;
+	int fb_format;
+	int bpp;
+	uint32_t active;
+};
+
 struct gralloc_drm_t {
 	/* initialized by gralloc_drm_create */
 	int fd;
 	struct gralloc_drm_drv_t *drv;
+
+	/* initialized by gralloc_drm_init_kms */
+	drmModeResPtr resources;
+	struct gralloc_drm_output primary;
+
+	/* initialized by drm_init_kms_features */
+	int swap_interval;
+	drmEventContext evctx;
+
+	int first_post;
+	struct gralloc_drm_bo_t *current_front, *next_front;
+	int waiting_flip;
+	unsigned int last_swap;
+
+	/* plane support */
+	drmModePlaneResPtr plane_resources;
+	struct gralloc_drm_plane_t *planes;
+};
+
+struct drm_gralloc1_module_t {
+    struct hw_module_t common;
+    int (*perform)(struct drm_gralloc1_module_t const* module,
+            int operation, ... );
+    int (*lock_ycbcr)(struct drm_gralloc1_module_t const* module,
+            buffer_handle_t handle, int usage,
+            int l, int t, int w, int h,
+            struct android_ycbcr *ycbcr);
+    int (*unlock)(struct drm_gralloc1_module_t const* module,
+            buffer_handle_t handle);
+    pthread_mutex_t mutex;
+    struct gralloc_drm_t *drm;
 };
 
 struct drm_module_t {

@@ -75,7 +75,6 @@ static enum pipe_format get_pipe_format(int format)
 		fmt = PIPE_FORMAT_B8G8R8A8_UNORM;
 		break;
 	case HAL_PIXEL_FORMAT_YV12:
-	case HAL_PIXEL_FORMAT_DRM_NV12:
 	case HAL_PIXEL_FORMAT_YCbCr_422_SP:
 	case HAL_PIXEL_FORMAT_YCrCb_420_SP:
 	default:
@@ -89,11 +88,6 @@ static enum pipe_format get_pipe_format(int format)
 static unsigned get_pipe_bind(int usage)
 {
 	unsigned bind = PIPE_BIND_SHARED;
-
-	if (usage & GRALLOC_USAGE_SW_READ_MASK)
-		bind |= PIPE_BIND_TRANSFER_READ;
-	if (usage & GRALLOC_USAGE_SW_WRITE_MASK)
-		bind |= PIPE_BIND_TRANSFER_WRITE;
 
 	if (usage & GRALLOC_USAGE_HW_TEXTURE)
 		bind |= PIPE_BIND_SAMPLER_VIEW;
@@ -116,6 +110,9 @@ static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 	memset(&templ, 0, sizeof(templ));
 	templ.format = get_pipe_format(handle->format);
 	templ.bind = get_pipe_bind(handle->usage);
+#ifdef ENABLE_PIPE_VC4
+	templ.bind &= ~(PIPE_BIND_SHARED|PIPE_BIND_SCANOUT);
+#endif
 	templ.target = PIPE_TEXTURE_2D;
 
 	if (templ.format == PIPE_FORMAT_NONE ||
@@ -142,7 +139,7 @@ static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 		buf->winsys.stride = handle->stride;
 
 		buf->resource = pm->screen->resource_from_handle(pm->screen,
-				&templ, &buf->winsys);
+				&templ, &buf->winsys, 0);
 		if (!buf->resource)
 			goto fail;
 	}
@@ -153,8 +150,8 @@ static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 			goto fail;
 
 		buf->winsys.type = DRM_API_HANDLE_TYPE_SHARED;
-		if (!pm->screen->resource_get_handle(pm->screen,
-					buf->resource, &buf->winsys))
+		if (!pm->screen->resource_get_handle(pm->screen, 0,
+					buf->resource, &buf->winsys, 0))
 			goto fail;
 	}
 
@@ -164,8 +161,8 @@ static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 
 		memset(&tmp, 0, sizeof(tmp));
 		tmp.type = DRM_API_HANDLE_TYPE_KMS;
-		if (!pm->screen->resource_get_handle(pm->screen,
-					buf->resource, &tmp))
+		if (!pm->screen->resource_get_handle(pm->screen, 0,
+					buf->resource, &tmp, 0))
 			goto fail;
 
 		buf->base.fb_handle = tmp.handle;
@@ -230,7 +227,7 @@ static int pipe_map(struct gralloc_drm_drv_t *drv,
 
 	/* need a context to get transfer */
 	if (!pm->context) {
-		pm->context = pm->screen->context_create(pm->screen, NULL);
+		pm->context = pm->screen->context_create(pm->screen, NULL, 0);
 		if (!pm->context) {
 			ALOGE("failed to create pipe context");
 			err = -ENOMEM;
@@ -296,13 +293,21 @@ static void pipe_destroy(struct gralloc_drm_drv_t *drv)
 /* for r300 */
 #include "radeon/drm/radeon_drm_public.h"
 #include "r300/r300_public.h"
+#ifdef ENABLE_PIPE_R600
 /* for r600 */
 #include "radeon/drm/radeon_winsys.h"
 #include "r600/r600_public.h"
+#endif
+#ifdef ENABLE_PIPE_VMWGFX
 /* for vmwgfx */
 #include "svga/drm/svga_drm_public.h"
 #include "svga/svga_winsys.h"
 #include "svga/svga_public.h"
+#endif
+#ifdef ENABLE_PIPE_VC4
+/* for vc4 */
+#include "vc4/drm/vc4_drm_public.h"
+#endif
 /* for debug */
 #include "target-helpers/inline_debug_helper.h"
 
@@ -346,6 +351,11 @@ static int pipe_init_screen(struct pipe_manager *pm)
 			if (!screen)
 				sws->destroy(sws);
 		}
+	}
+#endif
+#ifdef ENABLE_PIPE_VC4
+	if (strcmp(pm->driver, "vc4") == 0) {
+		screen = vc4_drm_screen_create(pm->fd);
 	}
 #endif
 
@@ -441,6 +451,10 @@ static int pipe_find_driver(struct pipe_manager *pm, const char *name)
 	else {
 		if (strcmp(name, "vmwgfx") == 0) {
 			driver = "vmwgfx";
+			err = 0;
+		}
+		if (strcmp(name, "vc4") == 0) {
+			driver = "vc4";
 			err = 0;
 		}
 	}

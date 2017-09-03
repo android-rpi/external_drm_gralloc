@@ -25,7 +25,6 @@
 
 #include <cutils/log.h>
 #include <cutils/atomic.h>
-#include <cutils/properties.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -36,6 +35,8 @@
 #include "gralloc_drm_priv.h"
 
 #define unlikely(x) __builtin_expect(!!(x), 0)
+
+#define GRALLOC_DRM_DEVICE "/dev/dri/card0"
 
 static int32_t gralloc_drm_pid = 0;
 
@@ -79,10 +80,6 @@ init_drv_from_fd(int fd)
 		if (!drv && !strcmp(version->name, "radeon"))
 			drv = gralloc_drm_drv_create_for_radeon(fd);
 #endif
-#ifdef ENABLE_ROCKCHIP
-		if (!drv && !strcmp(version->name, "rockchip"))
-			drv = gralloc_drm_drv_create_for_rockchip(fd);
-#endif
 #ifdef ENABLE_NOUVEAU
 		if (!drv && !strcmp(version->name, "nouveau"))
 			drv = gralloc_drm_drv_create_for_nouveau(fd);
@@ -104,25 +101,23 @@ init_drv_from_fd(int fd)
  */
 struct gralloc_drm_t *gralloc_drm_create(void)
 {
-	char path[PROPERTY_VALUE_MAX];
 	struct gralloc_drm_t *drm;
 	int err;
 
-	drm = new gralloc_drm_t;
+	drm = calloc(1, sizeof(*drm));
 	if (!drm)
 		return NULL;
 
-	property_get("gralloc.drm.device", path, "/dev/dri/renderD128");
-	drm->fd = open(path, O_RDWR);
+	drm->fd = open(GRALLOC_DRM_DEVICE, O_RDWR);
 	if (drm->fd < 0) {
-		ALOGE("failed to open %s", path);
+		ALOGE("failed to open %s", GRALLOC_DRM_DEVICE);
 		return NULL;
 	}
 
 	drm->drv = init_drv_from_fd(drm->fd);
 	if (!drm->drv) {
 		close(drm->fd);
-		delete drm;
+		free(drm);
 		return NULL;
 	}
 
@@ -137,7 +132,7 @@ void gralloc_drm_destroy(struct gralloc_drm_t *drm)
 	if (drm->drv)
 		drm->drv->destroy(drm->drv);
 	close(drm->fd);
-	delete drm;
+	free(drm);
 }
 
 /*
@@ -160,7 +155,6 @@ static struct gralloc_drm_bo_t *validate_handle(buffer_handle_t _handle,
 		return NULL;
 
 	/* the buffer handle is passed to a new process */
-	ALOGE("data_owner=%d gralloc_pid=%d data=%p\n", handle->data_owner, gralloc_drm_get_pid(), handle->data);
 	if (unlikely(handle->data_owner != gralloc_drm_pid)) {
 		struct gralloc_drm_bo_t *bo;
 
@@ -168,10 +162,8 @@ static struct gralloc_drm_bo_t *validate_handle(buffer_handle_t _handle,
 		if (!drm)
 			return NULL;
 
-		ALOGE("handle: name=%d pfd=%d\n", handle->name,
-			handle->prime_fd);
 		/* create the struct gralloc_drm_bo_t locally */
-		if (handle->name || handle->prime_fd >= 0)
+		if (handle->name)
 			bo = drm->drv->alloc(drm->drv, handle);
 		else /* an invalid handle */
 			bo = NULL;
@@ -231,7 +223,7 @@ static struct gralloc_drm_handle_t *create_bo_handle(int width,
 {
 	struct gralloc_drm_handle_t *handle;
 
-	handle = new gralloc_drm_handle_t;
+	handle = calloc(1, sizeof(*handle));
 	if (!handle)
 		return NULL;
 
@@ -244,7 +236,6 @@ static struct gralloc_drm_handle_t *create_bo_handle(int width,
 	handle->height = height;
 	handle->format = format;
 	handle->usage = usage;
-	handle->prime_fd = -1;
 
 	return handle;
 }
@@ -264,7 +255,7 @@ struct gralloc_drm_bo_t *gralloc_drm_bo_create(struct gralloc_drm_t *drm,
 
 	bo = drm->drv->alloc(drm->drv, handle);
 	if (!bo) {
-		delete handle;
+		free(handle);
 		return NULL;
 	}
 
@@ -298,7 +289,7 @@ static void gralloc_drm_bo_destroy(struct gralloc_drm_bo_t *bo)
 		handle->data = 0;
 	}
 	else {
-		delete handle;
+		free(handle);
 	}
 }
 
@@ -327,6 +318,12 @@ buffer_handle_t gralloc_drm_bo_get_handle(struct gralloc_drm_bo_t *bo, int *stri
 	if (stride)
 		*stride = bo->handle->stride;
 	return &bo->handle->base;
+}
+
+int gralloc_drm_get_gem_handle(buffer_handle_t _handle)
+{
+	struct gralloc_drm_handle_t *handle = gralloc_drm_handle(_handle);
+	return (handle) ? handle->name : 0;
 }
 
 /*
