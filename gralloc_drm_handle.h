@@ -81,6 +81,19 @@ static inline struct gralloc_drm_handle_t *gralloc_drm_handle(buffer_handle_t _h
 	return handle;
 }
 
+/*
+ * The functions supported by gralloc_drm's temporary private API are listed
+ * below. Use of these functions is highly discouraged and should only be
+ * reserved for cases where no alternative to get same information (such as
+ * querying ANativeWindow) exists.
+ */
+enum {
+  GRALLOC_DRM_GET_STRIDE,
+  GRALLOC_DRM_GET_FORMAT,
+  GRALLOC_DRM_GET_DIMENSIONS,
+  GRALLOC_DRM_GET_BACKING_STORE,
+};
+
 #ifdef __cplusplus
 }
 #endif
