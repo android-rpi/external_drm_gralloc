@@ -84,6 +84,7 @@ else
 include $(CLEAR_VARS)
 LOCAL_MODULE := libgralloc_drm
 LOCAL_MODULE_TAGS := optional
+LOCAL_PROPRIETARY_MODULE := true
 
 LOCAL_SRC_FILES := \
 	gralloc_drm.c
@@ -171,6 +172,11 @@ LOCAL_STATIC_LIBRARIES += \
 
 LOCAL_SHARED_LIBRARIES += libdl
 endif # DRM_USES_PIPE
+
+LOCAL_CFLAGS += \
+	-Wno-unused-variable \
+	-Wno-unused-parameter
+
 include $(BUILD_SHARED_LIBRARY)
 
 
