@@ -101,6 +101,10 @@ static unsigned get_pipe_bind(int usage)
 	return bind;
 }
 
+#ifndef DRM_FORMAT_MOD_INVALID
+#define DRM_FORMAT_MOD_INVALID ((1ULL << 56) - 1)
+#endif
+
 static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 		const struct gralloc_drm_handle_t *handle)
 {
@@ -117,7 +121,7 @@ static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 
 	if (templ.format == PIPE_FORMAT_NONE ||
 	    !pm->screen->is_format_supported(pm->screen, templ.format,
-				templ.target, 0, templ.bind)) {
+				templ.target, 0, 0, templ.bind)) {
 		ALOGE("unsupported format 0x%x", handle->format);
 		return NULL;
 	}
@@ -134,10 +138,10 @@ static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 	templ.array_size = 1;
 
 	if (handle->name) {
-		buf->winsys.type = DRM_API_HANDLE_TYPE_SHARED;
+		buf->winsys.type = WINSYS_HANDLE_TYPE_SHARED;
 		buf->winsys.handle = handle->name;
 		buf->winsys.stride = handle->stride;
-
+		buf->winsys.modifier = DRM_FORMAT_MOD_INVALID;
 		buf->resource = pm->screen->resource_from_handle(pm->screen,
 				&templ, &buf->winsys, 0);
 		if (!buf->resource)
@@ -149,7 +153,7 @@ static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 		if (!buf->resource)
 			goto fail;
 
-		buf->winsys.type = DRM_API_HANDLE_TYPE_SHARED;
+		buf->winsys.type = WINSYS_HANDLE_TYPE_SHARED;
 		if (!pm->screen->resource_get_handle(pm->screen, 0,
 					buf->resource, &buf->winsys, 0))
 			goto fail;
@@ -160,7 +164,7 @@ static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 		struct winsys_handle tmp;
 
 		memset(&tmp, 0, sizeof(tmp));
-		tmp.type = DRM_API_HANDLE_TYPE_KMS;
+		tmp.type = WINSYS_HANDLE_TYPE_KMS;
 		if (!pm->screen->resource_get_handle(pm->screen, 0,
 					buf->resource, &tmp, 0))
 			goto fail;
