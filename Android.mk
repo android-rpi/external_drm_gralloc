@@ -28,6 +28,7 @@ radeon_drivers := r300g r600g
 rockchip_drivers := rockchip
 nouveau_drivers := nouveau
 vmwgfx_drivers := vmwgfx
+vc4_drivers := vc4
 
 valid_drivers := \
 	prebuilt \
@@ -35,7 +36,8 @@ valid_drivers := \
 	$(radeon_drivers) \
 	$(rockchip_drivers) \
 	$(nouveau_drivers) \
-	$(vmwgfx_drivers)
+	$(vmwgfx_drivers) \
+        $(vc4_drivers)
 
 # warn about invalid drivers
 invalid_drivers := $(filter-out $(valid_drivers), $(DRM_GPU_DRIVERS))
@@ -45,7 +47,7 @@ $(warning invalid GPU drivers: $(invalid_drivers))
 DRM_GPU_DRIVERS := $(filter-out $(invalid_drivers), $(DRM_GPU_DRIVERS))
 endif
 
-ifneq ($(filter $(vmwgfx_drivers), $(DRM_GPU_DRIVERS)),)
+ifneq ($(filter $(vmwgfx_drivers) $(vc4_drivers), $(DRM_GPU_DRIVERS)),)
 DRM_USES_PIPE := true
 else
 DRM_USES_PIPE := false
@@ -82,9 +84,10 @@ else
 include $(CLEAR_VARS)
 LOCAL_MODULE := libgralloc_drm
 LOCAL_MODULE_TAGS := optional
+LOCAL_PROPRIETARY_MODULE := true
 
 LOCAL_SRC_FILES := \
-	gralloc_drm.cpp
+	gralloc_drm.c
 
 LOCAL_C_INCLUDES := \
 	external/libdrm \
@@ -94,8 +97,9 @@ LOCAL_SHARED_LIBRARIES := \
 	libdrm \
 	liblog \
 	libcutils \
-	libhardware_legacy \
-	libutils
+	libutils \
+        libexpat \
+        libz
 
 ifneq ($(filter $(intel_drivers), $(DRM_GPU_DRIVERS)),)
 LOCAL_SRC_FILES += gralloc_drm_intel.c
@@ -128,11 +132,13 @@ ifeq ($(strip $(DRM_USES_PIPE)),true)
 LOCAL_SRC_FILES += gralloc_drm_pipe.c
 LOCAL_CFLAGS += -DENABLE_PIPE
 LOCAL_C_INCLUDES += \
-	external/mesa/include \
-	external/mesa/src/gallium/include \
-	external/mesa/src/gallium/winsys \
-	external/mesa/src/gallium/drivers \
-	external/mesa/src/gallium/auxiliary
+	external/mesa3d/include \
+	external/mesa3d/src \
+	external/mesa3d/src/gallium \
+	external/mesa3d/src/gallium/include \
+	external/mesa3d/src/gallium/winsys \
+	external/mesa3d/src/gallium/drivers \
+	external/mesa3d/src/gallium/auxiliary
 
 ifneq ($(filter r600g, $(DRM_GPU_DRIVERS)),)
 LOCAL_CFLAGS += -DENABLE_PIPE_R600
@@ -150,10 +156,28 @@ LOCAL_C_INCLUDES += \
 	external/mesa/src/gallium/drivers/svga/include
 endif
 
+ifneq ($(filter vc4, $(DRM_GPU_DRIVERS)),)
+LOCAL_CFLAGS += -DENABLE_PIPE_VC4
 LOCAL_STATIC_LIBRARIES += \
-	libmesa_gallium
+	libmesa_winsys_vc4 \
+	libmesa_pipe_vc4
+endif
+
+LOCAL_STATIC_LIBRARIES += \
+	libmesa_gallium \
+	libmesa_glsl \
+	libmesa_glsl_utils \
+        libmesa_nir \
+	libmesa_util \
+        libmesa_compiler
+
 LOCAL_SHARED_LIBRARIES += libdl
 endif # DRM_USES_PIPE
+
+LOCAL_CFLAGS += \
+	-Wno-unused-variable \
+	-Wno-unused-parameter
+
 include $(BUILD_SHARED_LIBRARY)
 
 
@@ -177,6 +201,11 @@ LOCAL_SHARED_LIBRARIES += \
 LOCAL_MODULE := gralloc.drm
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_RELATIVE_PATH := hw
+
+LOCAL_CFLAGS += \
+	-Wno-unused-variable \
+	-Wno-unused-parameter
+
 include $(BUILD_SHARED_LIBRARY)
 
 endif # DRM_GPU_DRIVERS=prebuilt

@@ -37,9 +37,6 @@ struct gralloc_drm_bo_t;
 struct gralloc_drm_handle_t {
 	native_handle_t base;
 
-	/* file descriptors */
-	int prime_fd;
-
 	/* integers */
 	int magic;
 
@@ -51,14 +48,13 @@ struct gralloc_drm_handle_t {
 	int name;   /* the name of the bo */
 	int stride; /* the stride in bytes */
 
+	int data_owner; /* owner of data (for validation) */
 	struct gralloc_drm_bo_t *data; /* pointer to struct gralloc_drm_bo_t */
 
-	// FIXME: the attributes below should be out-of-line
-	uint64_t unknown __attribute__((aligned(8)));
-	int data_owner; /* owner of data (for validation) */
+        uint64_t backing_store __attribute__((aligned(8)));
 };
 #define GRALLOC_DRM_HANDLE_MAGIC 0x12345678
-#define GRALLOC_DRM_HANDLE_NUM_FDS 1
+#define GRALLOC_DRM_HANDLE_NUM_FDS 0
 #define GRALLOC_DRM_HANDLE_NUM_INTS (						\
 	((sizeof(struct gralloc_drm_handle_t) - sizeof(native_handle_t))/sizeof(int))	\
 	 - GRALLOC_DRM_HANDLE_NUM_FDS)
