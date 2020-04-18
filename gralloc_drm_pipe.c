@@ -32,6 +32,7 @@
 #include <util/u_inlines.h>
 #include <util/u_memory.h>
 
+#include <drm_fourcc.h>
 #include "gralloc_drm.h"
 #include "gralloc_drm_priv.h"
 
@@ -39,6 +40,7 @@ struct pipe_manager {
 	struct gralloc_drm_drv_t base;
 
 	int fd;
+	int kms_fd;
 	char driver[16];
 	pthread_mutex_t mutex;
 	struct pipe_screen *screen;
@@ -75,7 +77,6 @@ static enum pipe_format get_pipe_format(int format)
 		fmt = PIPE_FORMAT_B8G8R8A8_UNORM;
 		break;
 	case HAL_PIXEL_FORMAT_YV12:
-	case HAL_PIXEL_FORMAT_DRM_NV12:
 	case HAL_PIXEL_FORMAT_YCbCr_422_SP:
 	case HAL_PIXEL_FORMAT_YCrCb_420_SP:
 	default:
@@ -90,11 +91,6 @@ static unsigned get_pipe_bind(int usage)
 {
 	unsigned bind = PIPE_BIND_SHARED;
 
-	if (usage & GRALLOC_USAGE_SW_READ_MASK)
-		bind |= PIPE_BIND_TRANSFER_READ;
-	if (usage & GRALLOC_USAGE_SW_WRITE_MASK)
-		bind |= PIPE_BIND_TRANSFER_WRITE;
-
 	if (usage & GRALLOC_USAGE_HW_TEXTURE)
 		bind |= PIPE_BIND_SAMPLER_VIEW;
 	if (usage & GRALLOC_USAGE_HW_RENDER)
@@ -108,7 +104,7 @@ static unsigned get_pipe_bind(int usage)
 }
 
 static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
-		const struct gralloc_drm_handle_t *handle)
+		struct gralloc_drm_handle_t *handle)
 {
 	struct pipe_buffer *buf;
 	struct pipe_resource templ;
@@ -120,7 +116,7 @@ static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 
 	if (templ.format == PIPE_FORMAT_NONE ||
 	    !pm->screen->is_format_supported(pm->screen, templ.format,
-				templ.target, 0, templ.bind)) {
+				templ.target, 0, 0, templ.bind)) {
 		ALOGE("unsupported format 0x%x", handle->format);
 		return NULL;
 	}
@@ -136,39 +132,41 @@ static struct pipe_buffer *get_pipe_buffer_locked(struct pipe_manager *pm,
 	templ.depth0 = 1;
 	templ.array_size = 1;
 
-	if (handle->name) {
-		buf->winsys.type = DRM_API_HANDLE_TYPE_SHARED;
-		buf->winsys.handle = handle->name;
+	if (handle->prime_fd >= 0) {
+		buf->winsys.type = WINSYS_HANDLE_TYPE_FD;
+		buf->winsys.handle = handle->prime_fd;
 		buf->winsys.stride = handle->stride;
-
+		buf->winsys.modifier = DRM_FORMAT_MOD_LINEAR;
 		buf->resource = pm->screen->resource_from_handle(pm->screen,
-				&templ, &buf->winsys);
+				&templ, &buf->winsys, 0);
 		if (!buf->resource)
 			goto fail;
 	}
 	else {
+		const uint64_t mod = DRM_FORMAT_MOD_LINEAR;
 		buf->resource =
-			pm->screen->resource_create(pm->screen, &templ);
+			pm->screen->resource_create_with_modifiers(pm->screen, &templ, &mod, 1);
 		if (!buf->resource)
 			goto fail;
 
-		buf->winsys.type = DRM_API_HANDLE_TYPE_SHARED;
-		if (!pm->screen->resource_get_handle(pm->screen,
-					buf->resource, &buf->winsys))
+		buf->winsys.type = WINSYS_HANDLE_TYPE_FD;
+		if (!pm->screen->resource_get_handle(pm->screen, 0,
+					buf->resource, &buf->winsys, 0))
 			goto fail;
+		handle->prime_fd = (int) buf->winsys.handle;
 	}
 
-	/* need the gem handle for fb */
-	if (handle->usage & GRALLOC_USAGE_HW_FB) {
+	/* need the gem handle */
+	if (handle->prime_fd >= 0) {
 		struct winsys_handle tmp;
 
 		memset(&tmp, 0, sizeof(tmp));
-		tmp.type = DRM_API_HANDLE_TYPE_KMS;
-		if (!pm->screen->resource_get_handle(pm->screen,
-					buf->resource, &tmp))
+		tmp.type = WINSYS_HANDLE_TYPE_SHARED;
+		if (!pm->screen->resource_get_handle(pm->screen, 0,
+					buf->resource, &tmp, 0))
 			goto fail;
 
-		buf->base.fb_handle = tmp.handle;
+		buf->winsys.handle = tmp.handle;
 	}
 
 	return buf;
@@ -209,6 +207,11 @@ static void pipe_free(struct gralloc_drm_drv_t *drv, struct gralloc_drm_bo_t *bo
 
 	pthread_mutex_lock(&pm->mutex);
 
+	if (bo->handle->prime_fd >= 0) {
+		close(bo->handle->prime_fd);
+		bo->handle->prime_fd = -1;
+	}
+
 	if (buf->transfer)
 		pipe_transfer_unmap(pm->context, buf->transfer);
 	pipe_resource_reference(&buf->resource, NULL);
@@ -230,7 +233,7 @@ static int pipe_map(struct gralloc_drm_drv_t *drv,
 
 	/* need a context to get transfer */
 	if (!pm->context) {
-		pm->context = pm->screen->context_create(pm->screen, NULL);
+		pm->context = pm->screen->context_create(pm->screen, NULL, 0);
 		if (!pm->context) {
 			ALOGE("failed to create pipe context");
 			err = -ENOMEM;
@@ -296,13 +299,50 @@ static void pipe_destroy(struct gralloc_drm_drv_t *drv)
 /* for r300 */
 #include "radeon/drm/radeon_drm_public.h"
 #include "r300/r300_public.h"
+#ifdef ENABLE_PIPE_R600
 /* for r600 */
 #include "radeon/drm/radeon_winsys.h"
 #include "r600/r600_public.h"
+#endif
+#ifdef ENABLE_PIPE_VMWGFX
 /* for vmwgfx */
 #include "svga/drm/svga_drm_public.h"
 #include "svga/svga_winsys.h"
 #include "svga/svga_public.h"
+#endif
+#ifdef ENABLE_PIPE_VC4
+/* for vc4 */
+#include "vc4/drm/vc4_drm_public.h"
+#endif
+#ifdef ENABLE_PIPE_V3D
+/* for v3d */
+#include "v3d/drm/v3d_drm_public.h"
+#include "renderonly/renderonly.h"
+
+#include "util/xmlconfig.h"
+#include "util/xmlpool.h"
+static const char *v3d_driconf_xml =
+      #include "v3d_driinfo.h"
+      ;
+
+static struct driOptionCache v3d_dri_options;
+static struct pipe_screen_config v3d_screen_config;
+
+static struct pipe_screen *gralloc_v3d_screen_create(int kms_fd, int gpu_fd)
+{
+   struct pipe_screen *screen = NULL;
+   struct renderonly ro = {
+      .kms_fd = kms_fd,
+      .gpu_fd = gpu_fd,
+      .create_for_resource = renderonly_create_kms_dumb_buffer_for_resource
+   };
+
+   driParseOptionInfo(&v3d_dri_options, v3d_driconf_xml);
+   v3d_screen_config.options = &v3d_dri_options;
+
+   return v3d_drm_screen_create_renderonly(&ro, &v3d_screen_config);
+}
+#endif
 /* for debug */
 #include "target-helpers/inline_debug_helper.h"
 
@@ -346,6 +386,16 @@ static int pipe_init_screen(struct pipe_manager *pm)
 			if (!screen)
 				sws->destroy(sws);
 		}
+	}
+#endif
+#ifdef ENABLE_PIPE_VC4
+	if (strcmp(pm->driver, "vc4") == 0) {
+		screen = vc4_drm_screen_create(pm->fd, NULL);
+	}
+#endif
+#ifdef ENABLE_PIPE_V3D
+	if (strcmp(pm->driver, "v3d") == 0) {
+		screen = gralloc_v3d_screen_create(pm->kms_fd, pm->fd);
 	}
 #endif
 
@@ -443,6 +493,14 @@ static int pipe_find_driver(struct pipe_manager *pm, const char *name)
 			driver = "vmwgfx";
 			err = 0;
 		}
+		if (strcmp(name, "vc4") == 0) {
+			driver = "vc4";
+			err = 0;
+		}
+		if (strcmp(name, "v3d") == 0) {
+			driver = "v3d";
+			err = 0;
+		}
 	}
 
 	if (!err)
@@ -451,7 +509,7 @@ static int pipe_find_driver(struct pipe_manager *pm, const char *name)
 	return err;
 }
 
-struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_pipe(int fd, const char *name)
+struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_pipe(int fd, int kms_fd, const char *name)
 {
 	struct pipe_manager *pm;
 
@@ -462,6 +520,7 @@ struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_pipe(int fd, const char *na
 	}
 
 	pm->fd = fd;
+	pm->kms_fd = kms_fd;
 	pthread_mutex_init(&pm->mutex, NULL);
 
 	if (pipe_find_driver(pm, name)) {

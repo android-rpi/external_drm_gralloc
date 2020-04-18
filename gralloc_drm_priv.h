@@ -37,6 +37,7 @@ extern "C" {
 struct gralloc_drm_t {
 	/* initialized by gralloc_drm_create */
 	int fd;
+	int kms_fd;
 	struct gralloc_drm_drv_t *drv;
 };
 
@@ -88,7 +89,7 @@ struct gralloc_drm_bo_t {
 	unsigned int refcount;
 };
 
-struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_pipe(int fd, const char *name);
+struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_pipe(int fd, int kms_fd, const char *name);
 struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_intel(int fd);
 struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_radeon(int fd);
 struct gralloc_drm_drv_t *gralloc_drm_drv_create_for_rockchip(int fd);
