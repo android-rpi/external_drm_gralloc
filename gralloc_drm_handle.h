@@ -24,7 +24,7 @@
 #ifndef _GRALLOC_DRM_HANDLE_H_
 #define _GRALLOC_DRM_HANDLE_H_
 
-#include <cutils/log.h>
+#include <log/log.h>
 #include <cutils/native_handle.h>
 #include <system/graphics.h>
 

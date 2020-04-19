@@ -23,7 +23,7 @@
 
 #define LOG_TAG "GRALLOC-PIPE"
 
-#include <cutils/log.h>
+#include <log/log.h>
 #include <errno.h>
 
 #include <pipe/p_screen.h>
