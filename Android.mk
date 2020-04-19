@@ -90,6 +90,7 @@ LOCAL_SRC_FILES := \
 	gralloc_drm.c
 
 LOCAL_C_INCLUDES := \
+	hardware/libhardware/include \
 	external/libdrm \
 	external/libdrm/include/drm
 
@@ -98,8 +99,9 @@ LOCAL_SHARED_LIBRARIES := \
 	liblog \
 	libcutils \
 	libutils \
-        libexpat \
         libz
+
+LOCAL_STATIC_LIBRARIES += libexpat
 
 ifneq ($(filter $(intel_drivers), $(DRM_GPU_DRIVERS)),)
 LOCAL_SRC_FILES += gralloc_drm_intel.c
