@@ -212,6 +212,7 @@ LOCAL_SHARED_LIBRARIES += \
 LOCAL_MODULE := gralloc.drm
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_RELATIVE_PATH := hw
+LOCAL_PROPRIETARY_MODULE := true
 
 LOCAL_CFLAGS += \
 	-Wno-unused-variable \
