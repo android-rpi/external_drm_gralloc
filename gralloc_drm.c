@@ -174,7 +174,8 @@ static struct gralloc_drm_bo_t *validate_handle(buffer_handle_t _handle,
 
 	/* the buffer handle is passed to a new process */
 	ALOGV("data_owner=%d gralloc_pid=%d data=%p\n", handle->data_owner, gralloc_drm_get_pid(), handle->data);
-	if (unlikely(handle->data_owner != gralloc_drm_pid)) {
+	if (unlikely((handle->data_owner != gralloc_drm_pid) ||
+	    ((handle->data != 0) && (handle != handle->data->handle)))) {
 		struct gralloc_drm_bo_t *bo;
 
 		/* check only */
