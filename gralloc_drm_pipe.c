@@ -28,7 +28,7 @@
 
 #include <pipe/p_screen.h>
 #include <pipe/p_context.h>
-#include <state_tracker/drm_driver.h>
+#include <frontend/drm_driver.h>
 #include <util/u_inlines.h>
 #include <util/u_memory.h>
 
@@ -323,7 +323,7 @@ static void pipe_destroy(struct gralloc_drm_drv_t *drv)
 #include "renderonly/renderonly.h"
 
 #include "util/xmlconfig.h"
-#include "util/xmlpool.h"
+#include "util/driconf.h"
 static const char *v3d_driconf_xml =
       #include "v3d_driinfo.h"
       ;
