@@ -60,14 +60,14 @@ static inline int gralloc_drm_get_bpp(int format)
 		break;
 	case HAL_PIXEL_FORMAT_RGB_565:
 	case HAL_PIXEL_FORMAT_YCbCr_422_I:
+	case HAL_PIXEL_FORMAT_YV12:
+	case HAL_PIXEL_FORMAT_YCBCR_420_888:
 		bpp = 2;
 		break;
 	case HAL_PIXEL_FORMAT_BLOB:
 	/* planar; only Y is considered */
-	case HAL_PIXEL_FORMAT_YV12:
 	case HAL_PIXEL_FORMAT_YCbCr_422_SP:
 	case HAL_PIXEL_FORMAT_YCrCb_420_SP:
-	case HAL_PIXEL_FORMAT_YCbCr_420_888:
 		bpp = 1;
 		break;
 	default:
@@ -122,7 +122,8 @@ int gralloc_drm_get_gem_handle(buffer_handle_t handle);
 void gralloc_drm_resolve_format(buffer_handle_t _handle, uint32_t *pitches, uint32_t *offsets, uint32_t *handles);
 unsigned int planes_for_format(struct gralloc_drm_t *drm, int hal_format);
 
-int gralloc_drm_bo_lock(struct gralloc_drm_bo_t *bo, int x, int y, int w, int h, int enable_write, void **addr);
+int gralloc_drm_bo_lock(struct gralloc_drm_bo_t *bo, int usage, int x, int y, int w, int h, void **addr);
+int gralloc_drm_bo_lock_ycbcr(struct gralloc_drm_bo_t *bo, int usage, int x, int y, int w, int h, struct android_ycbcr *ycbcr);
 void gralloc_drm_bo_unlock(struct gralloc_drm_bo_t *bo);
 
 #ifdef __cplusplus

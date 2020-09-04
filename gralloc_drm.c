@@ -32,6 +32,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "gralloc_drm.h"
 #include "gralloc_drm_priv.h"
@@ -404,6 +405,50 @@ int gralloc_drm_bo_lock(struct gralloc_drm_bo_t *bo,
 
 	bo->lock_count++;
 	bo->locked_for |= usage;
+
+	return 0;
+}
+
+int gralloc_drm_bo_lock_ycbcr(struct gralloc_drm_bo_t *bo,
+		int usage, int x, int y, int w, int h,
+		struct android_ycbcr *ycbcr)
+{
+	int ystride, cstride;
+	void *ptr = 0;
+	int err;
+	struct gralloc_drm_handle_t *handle;
+
+	handle = bo->handle;
+
+	err = gralloc_drm_bo_lock(bo, usage, x, y, w, h, &ptr);
+	if (err)
+		return err;
+
+	memset(ycbcr->reserved, 0, sizeof(ycbcr->reserved));
+
+	switch(handle->format) {
+	case HAL_PIXEL_FORMAT_YV12:
+		ystride = handle->stride / 2;
+		cstride = ALIGN(ystride / 2, 16);
+		ycbcr->y = ptr;
+		ycbcr->cr = (uint8_t *)ptr + ystride * handle->height;
+		ycbcr->cb = (uint8_t *)ptr + ystride * handle->height + cstride *  handle->height / 2;
+		ycbcr->ystride = ystride;
+		ycbcr->cstride = cstride;
+		ycbcr->chroma_step = 1;
+		break;
+	case HAL_PIXEL_FORMAT_YCBCR_420_888:
+		ystride = cstride = ALIGN(handle->stride / 2, 16);
+		ycbcr->y = ptr;
+		ycbcr->cb = (uint8_t *)ptr + ystride * handle->height;
+		ycbcr->cr = (uint8_t *)ycbcr->cb + 1;
+		ycbcr->ystride = ystride;
+		ycbcr->cstride = cstride;
+		ycbcr->chroma_step = 2;
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	return 0;
 }
