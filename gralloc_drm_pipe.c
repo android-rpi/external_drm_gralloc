@@ -247,11 +247,11 @@ static int pipe_map(struct gralloc_drm_drv_t *drv,
 	}
 
 	if (!err) {
-		enum pipe_transfer_usage usage;
+		enum pipe_map_flags usage;
 
-		usage = PIPE_TRANSFER_READ;
+		usage = PIPE_MAP_READ;
 		if (enable_write)
-			usage |= PIPE_TRANSFER_WRITE;
+			usage |= PIPE_MAP_WRITE;
 
 		assert(!buf->transfer);
 
@@ -325,11 +325,35 @@ static void pipe_destroy(struct gralloc_drm_drv_t *drv)
 #include "v3d/drm/v3d_drm_public.h"
 #include "renderonly/renderonly.h"
 
-#include "util/xmlconfig.h"
 #include "util/driconf.h"
-static const char *v3d_driconf_xml =
-      #include "v3d_driinfo.h"
-      ;
+
+static const driOptionDescription gallium_driconf[] = {
+      #include "pipe-loader/driinfo_gallium.h"
+      };
+
+static const driOptionDescription v3d_driconf[] = {
+      #include "v3d/driinfo_v3d.h"
+      };
+
+static driOptionDescription *
+merge_driconf(const driOptionDescription *driver_driconf, unsigned driver_count,
+              unsigned *merged_count)
+{
+   unsigned gallium_count = ARRAY_SIZE(gallium_driconf);
+   driOptionDescription *merged = malloc((driver_count + gallium_count) *
+                                         sizeof(*merged));
+   if (!merged) {
+      *merged_count = 0;
+      return NULL;
+   }
+
+   memcpy(merged, gallium_driconf, sizeof(*merged) * gallium_count);
+   memcpy(&merged[gallium_count], driver_driconf, sizeof(*merged) * driver_count);
+
+   *merged_count = driver_count + gallium_count;
+   return merged;
+}
+
 
 static struct driOptionCache v3d_dri_options;
 static struct pipe_screen_config v3d_screen_config;
@@ -343,7 +367,11 @@ static struct pipe_screen *gralloc_v3d_screen_create(int kms_fd, int gpu_fd)
       .create_for_resource = renderonly_create_kms_dumb_buffer_for_resource
    };
 
-   driParseOptionInfo(&v3d_dri_options, v3d_driconf_xml);
+   unsigned merged_count;
+   const driOptionDescription *merged_driconf =
+      merge_driconf(v3d_driconf, ARRAY_SIZE(v3d_driconf), &merged_count);
+
+   driParseOptionInfo(&v3d_dri_options, merged_driconf, merged_count);
    v3d_screen_config.options = &v3d_dri_options;
 
    return v3d_drm_screen_create_renderonly(&ro, &v3d_screen_config);

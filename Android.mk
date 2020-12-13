@@ -98,6 +98,7 @@ LOCAL_SHARED_LIBRARIES := \
 	libdrm \
 	liblog \
 	libcutils \
+	libsync \
 	libutils \
         libz
 
